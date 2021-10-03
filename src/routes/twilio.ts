@@ -4,7 +4,7 @@ export let twiliorouter = express.Router();
 twiliorouter.all('/', twilio.webhook(), function(req, res, next) {
     console.log(req)
       // Create a TwiML response
-      var twiml = new twilio.TwimlResponse();
+      var twiml = new twilio.twiml.MessagingResponse()
       twiml.message('Hello from node.js!');
   
       // Render the TwiML response as XML
