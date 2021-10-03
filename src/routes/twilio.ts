@@ -11,3 +11,18 @@ twiliorouter.all('/', twilio.webhook(), function(req, res, next) {
       res.type('text/xml');
       res.send(twiml.toString());
 });
+
+twiliorouter.all('/incomingmsg/:campaignid', twilio.webhook(), function(req, res, next) {
+    console.log(req.body)
+    //do a lookup of the campaign, see if it exists
+
+        // if it exists, add the text message to the text database
+});
+
+twiliorouter.all('/statuscallback/:campaignid', twilio.webhook(), function(req, res, next) {
+    console.log(req.body)
+
+    //do a lookup of the campaign, see if it exists
+
+        // if it exists, update the status of that specific message
+});
