@@ -28,7 +28,7 @@ var twilioFormat = function (req, res, next) {
 
 twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat], function (req, res, next) {
     console.log(req.body)
-    //do a lookup of the campaign, see if it exists
+    //do a lookup of the campaign, see if it exists, and validate the accound sid and twilio origin
 
         // if it exists, add the text message to the text database
     res.send("Success")
@@ -37,7 +37,7 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat], function (req, res,
 twiliorouter.all('/statuscallback/:campaignid', [twilioFormat], function(req, res, next) {
     console.log(req.body)
 
-    //do a lookup of the campaign, see if it exists
+   //do a lookup of the campaign, see if it exists, and validate the accound sid and twilio origin
 
         // if it exists, update the status of that specific message
         res.send("Success")
