@@ -15,6 +15,7 @@
   "dependencies": {
     "@types/node": "^16.10.2",
     "cors": "^2.8.5",
+    "dd-trace": "^1.4.1",
     "express": "^4.17.1",
     "http2": "^3.3.7",
     "tslint": "^6.1.3",
