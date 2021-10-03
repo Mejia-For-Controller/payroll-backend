@@ -8,7 +8,7 @@ app.use(cors())
 app.use('/twilio', twiliorouter);
 
 // define a route handler for the default home page
-app.get("/", (req, res) => {
+app.all("/", (req, res) => {
     console.log(req)
     res.send( "Hello world!" );
 } );
