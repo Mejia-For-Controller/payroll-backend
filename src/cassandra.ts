@@ -1,4 +1,4 @@
-const { config } = require('./../../config.json');
+const { config } = require('./../config.json');
 const cassandra = require('cassandra-driver');
 
 export const cassandraclient = new cassandra.Client({
