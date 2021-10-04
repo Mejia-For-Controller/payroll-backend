@@ -6,20 +6,20 @@ export async function createDatabases() {
   await cassandraclient.execute("CREATE KEYSPACE IF NOT EXISTS texter WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy',  'datacenter1': 1  };")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
-          /*console.log(result)*/
+          console.log(result)
       }).catch(error => console.error(error));
 
   //Goes inside adora moderation keyspace, makes the table "trackedytvideoids"
   await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.campaigns (campaignid text PRIMARY KEY, name text, ownerid text, iconURL text, bannerURL text, creationtime timeuuid);")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
-          /*console.log(result)*/
+          console.log(result)
       }).catch(error => console.error(error));
   
       await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text PRIMARY KEY, userid text, joinedtime timeuuid);")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
-          /*console.log(result)*/
+          console.log(result)
       }).catch(error => console.error(error));
 
   //Goes inside adorastats keyspace, makes the table "ytvideostats"
