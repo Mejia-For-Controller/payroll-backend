@@ -19,6 +19,7 @@ admin.initializeApp({
 app.use(cors())
 app.use('/twilio', twiliorouter);
 app.use(express.urlencoded())
+app.use(cookieParser())
 
 // define a route handler for the default home page
 app.all("/", cors(), (req, res) => {
