@@ -21,6 +21,11 @@ export async function createDatabases() {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
           console.log(result)
       }).catch(error => console.error(error));
+  
+  await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.memberships (userid);").then(async result => {
+    // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+     console.log(result)
+ }).catch(error => console.error(error));
 
   //Goes inside adorastats keyspace, makes the table "ytvideostats"
   /*
