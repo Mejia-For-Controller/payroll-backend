@@ -25,13 +25,13 @@ app.all("/", (req, res) => {
     res.send( "Hello world!" );
 });
 
-app.all('/mycampaigns', (req, res) => {
+app.all('/mycampaigns', cors(),(req, res) => {
     const sessionCookie = req.cookies.session || "";
     admin
     .auth()
     .verifySessionCookie(sessionCookie, true /** checkRevoked */)
-      .then(() => {
-      
+      .then((decodedClaims) => {
+        console.log(decodedClaims)
         // look up membership
 
         return res.send({
@@ -52,8 +52,8 @@ app.all('/createcampaign', (req, res) => {
     admin
     .auth()
     .verifySessionCookie(sessionCookie, true /** checkRevoked */)
-        .then(() => {
-        
+      .then((decodedClaims) => {
+          console.log(decodedClaims)
             // check if the name doen't exist, then create it with the user id as the owner.
         return res.send({
              "success": true
