@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^16.10.2",
+    "cassandra-driver": "^4.6.3",
     "cors": "^2.8.5",
     "dd-trace": "^1.4.1",
     "express": "^4.17.1",
