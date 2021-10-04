@@ -6,7 +6,8 @@ const port = 3000; // default port to listen
 import { twiliorouter } from "./routes/twilio";
 import * as admin from 'firebase-admin';
 const serviceAccount = require("./../serviceAccountKey.json");
-import {createDatabases} from './createDatabases'
+import { createDatabases } from './createDatabases'
+import cookieParser from 'cookie-parser'
 import { config } from './../config.json'
 
 createDatabases()
@@ -20,12 +21,12 @@ app.use('/twilio', twiliorouter);
 app.use(express.urlencoded())
 
 // define a route handler for the default home page
-app.all("/", (req, res) => {
+app.all("/", cors(), (req, res) => {
     console.log(req)
     res.send( "Hello world!" );
 });
 
-app.all('/mycampaigns', cors(),(req, res) => {
+app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
     const sessionCookie = req.cookies.session || "";
     admin
     .auth()
@@ -47,7 +48,7 @@ app.all('/mycampaigns', cors(),(req, res) => {
     });
 })
 
-app.all('/createcampaign', (req, res) => {
+app.all('/createcampaign', [cors(),cookieParser()], (req, res) => {
     const sessionCookie = req.cookies.session || "";
     admin
     .auth()
