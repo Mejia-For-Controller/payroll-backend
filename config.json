@@ -1,0 +1,10 @@
+{
+  "config": {
+		"cassandra": {
+			"contactPoints": [ "172.17.0.2" ],
+			"localDataCenter": "datacenter1",
+			"plainTextUsername": "cassandra",
+			"plainTextPassword": "cassandra"
+		}
+	}
+}
