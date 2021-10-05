@@ -27,12 +27,12 @@ app.all("/", cors(), (req, res) => {
     res.send( "Hello world!" );
 });
 
-app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
-  const sessionCookie = req.cookies.session || "";
-  console.log(sessionCookie)
+app.all('/mycampaigns', [cors(),cookieParser(),express.json()],(req, res) => {
+  //const sessionCookie = req.cookies.session || "";
+  //console.log(sessionCookie)
     admin
     .auth()
-    .verifySessionCookie(sessionCookie, true /** checkRevoked */)
+    .verifyIdToken(req.body.firebaseToken)
       .then((decodedClaims) => {
         console.log(decodedClaims)
         // look up membership
@@ -51,18 +51,17 @@ app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
     });
 })
 
-app.all('/createcampaign', [cors(),cookieParser()], (req, res) => {
-  const sessionCookie = req.cookies.session || "";
-    admin
-    .auth()
-    .verifySessionCookie(sessionCookie, true /** checkRevoked */)
-      .then((decodedClaims) => {
-          console.log(decodedClaims)
-            // check if the name doen't exist, then create it with the user id as the owner.
-        return res.send({
-             "success": true
-      })
-    })
+app.all('/createcampaign', [cors(),cookieParser(),express.json()], (req, res) => {
+  //const sessionCookie = req.cookies.session || "";
+    // idToken comes from the client app
+  
+admin
+.auth()
+.verifyIdToken(idToken)
+.then((decodedToken) => {
+  const uid = decodedToken.uid;
+  // ...
+})
     .catch((error) => {
       //res.redirect("/login");
       console.log(error)
