@@ -28,7 +28,8 @@ app.all("/", cors(), (req, res) => {
 });
 
 app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
-    const sessionCookie = req.cookies.session || "";
+  const sessionCookie = req.cookies.session || "";
+  console.log(sessionCookie)
     admin
     .auth()
     .verifySessionCookie(sessionCookie, true /** checkRevoked */)
@@ -51,7 +52,7 @@ app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
 })
 
 app.all('/createcampaign', [cors(),cookieParser()], (req, res) => {
-    const sessionCookie = req.cookies.session || "";
+  const sessionCookie = req.cookies.session || "";
     admin
     .auth()
     .verifySessionCookie(sessionCookie, true /** checkRevoked */)
