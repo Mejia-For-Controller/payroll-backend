@@ -9,6 +9,7 @@ const serviceAccount = require("./../serviceAccountKey.json");
 import { createDatabases } from './createDatabases'
 import cookieParser from 'cookie-parser'
 import { config } from './../config.json'
+import helmet from 'helmet'
 
 createDatabases()
 
@@ -20,6 +21,7 @@ app.use(cors())
 app.use('/twilio', twiliorouter);
 app.use(express.urlencoded())
 app.use(cookieParser())
+app.use(helmet())
 
 // define a route handler for the default home page
 app.all("/", cors(), (req, res) => {
@@ -36,7 +38,6 @@ app.all('/mycampaigns', [cors(),cookieParser(),express.json()],(req, res) => {
       .then((decodedClaims) => {
         console.log(decodedClaims)
         // look up membership
-
         return res.send({
          "campaignlist": 
           []
