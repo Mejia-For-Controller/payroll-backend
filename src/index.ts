@@ -81,7 +81,14 @@ app.all('/createcampaign', [cors(),cookieParser(),express.json()], (req, res) =>
 
         if (decodedIdToken.uid === "pDU7JvlefcTtGnSssyMo1hhneqO2") {
           const createCampaignQuery = "INSERT INTO texter.campaigns (campaignid, name, ownerid, iconURL, bannerURL, creationtime, accountsid, authtoken) VALUES (?, ?, ?, ?, ?, ?, ?, ?) IF NOT EXISTS; "
-          const createCampaignParams = [req.body.creationOptions.campaignid,req.body.creationOptions.name,decodedIdToken.uid,undefined,undefined,TimeUuid.now(),req.body.creationOptions.twilio.accountsid,req.body.creationOptions.twilio.authtoken]
+          const createCampaignParams = [req.body.creationOptions.campaignid,
+            req.body.creationOptions.name,
+            decodedIdToken.uid,
+            undefined,
+            undefined,
+            TimeUuid.now(),
+            req.body.creationOptions.twilio.accountsid,
+            req.body.creationOptions.twilio.authtoken]
           cassandraclient.execute(createCampaignQuery, createCampaignParams)
             .then(async result => {
               const createInitMemberQuery = "INSERT INTO texter.memberships (campaignid, userid, joinedtime) VALUES (?, ?, ?) IF NOT EXISTS; "
