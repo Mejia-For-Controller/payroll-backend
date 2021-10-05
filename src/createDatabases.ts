@@ -16,13 +16,18 @@ export async function createDatabases() {
           console.log(result)
       }).catch(error => console.error(error));
   
-      await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text PRIMARY KEY, userid text, joinedtime timeuuid);")
+    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text, userid text, joinedtime timeuuid, isowner bool, isadmin bool, isvolunteer bool PRIMARY KEY (campaignid, userid)); ")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
           console.log(result)
       }).catch(error => console.error(error));
   
   await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.memberships (userid);").then(async result => {
+    // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+     console.log(result)
+  }).catch(error => console.error(error));
+    
+  await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.memberships (campaignid);").then(async result => {
     // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
      console.log(result)
  }).catch(error => console.error(error));
