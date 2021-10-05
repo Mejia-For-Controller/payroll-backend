@@ -43,6 +43,7 @@ app.all('/mycampaigns', [cors(),cookieParser()],(req, res) => {
     })
     .catch((error) => {
       //res.redirect("/login");
+      console.log(error)
       return res.type('text/plain')
       .status(401)
       .send('Invalid');
@@ -63,6 +64,7 @@ app.all('/createcampaign', [cors(),cookieParser()], (req, res) => {
     })
     .catch((error) => {
       //res.redirect("/login");
+      console.log(error)
       return res.type('text/plain')
       .status(400)
       .send('Invalid');
