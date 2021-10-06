@@ -91,8 +91,10 @@ app.all('/createcampaign', [cors(),cookieParser(),express.json()], (req, res) =>
             req.body.creationOptions.twilio.authtoken]
           cassandraclient.execute(createCampaignQuery, createCampaignParams)
             .then(async result => {
-              const createInitMemberQuery = "INSERT INTO texter.memberships (campaignid, userid, joinedtime) VALUES (?, ?, ?) IF NOT EXISTS; "
-              const createInitParams = [req.body.creationOptions.campaignid,decodedIdToken.uid,TimeUuid.now()]
+              const createInitMemberQuery = "INSERT INTO texter.memberships (campaignid, userid, joinedtime, isowner, isadmin, isvolunteer) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS; "
+              const createInitParams = [req.body.creationOptions.campaignid, decodedIdToken.uid, TimeUuid.now(),
+              true, true, true
+              ]
               cassandraclient.execute(createCampaignQuery, createCampaignParams)
                 .then(async result2 => {
                   console.log(result2)
