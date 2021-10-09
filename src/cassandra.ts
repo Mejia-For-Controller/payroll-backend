@@ -1,3 +1,4 @@
+/* tslint:disable-next-line */
 const { config } = require('./../config.json');
 const cassandra = require('cassandra-driver');
 

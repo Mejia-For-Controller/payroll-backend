@@ -10,13 +10,13 @@ export async function createDatabases() {
       }).catch(error => console.error(error));
 
   //Goes inside adora moderation keyspace, makes the table "trackedytvideoids"
-  await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.campaigns (campaignid text PRIMARY KEY, name text, ownerid text, iconURL text, bannerURL text, creationtime timeuuid, accountsid text, authtoken text);")
+  await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.campaigns (campaignid text PRIMARY KEY, about text, website text, name text, ownerid text, iconurl text, bannerurl text, creationtime timeuuid, accountsid text, authtoken text, messagingservicesid text);")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
           console.log(result)
       }).catch(error => console.error(error));
   
-    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text, userid text, joinedtime timeuuid, isowner bool, isadmin bool, isvolunteer bool PRIMARY KEY (campaignid, userid)); ")
+    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text, userid text, joinedtime timeuuid, isowner boolean, isadmin boolean, isvolunteer boolean, PRIMARY KEY (campaignid, userid)); ")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
           console.log(result)
