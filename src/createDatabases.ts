@@ -16,6 +16,8 @@ export async function createDatabases() {
           console.log(result)
       }).catch(error => console.error(error));
   
+      await cassandraclient.execute("CREATE TABLE texter.channelcount ( campaignid text PRIMARY KEY, channelcount counter);")
+    
     await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.memberships (campaignid text, userid text, joinedtime timeuuid, isowner boolean, isadmin boolean, isvolunteer boolean, PRIMARY KEY (campaignid, userid)); ")
       .then(async result => {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
@@ -30,7 +32,31 @@ export async function createDatabases() {
   await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.memberships (campaignid);").then(async result => {
     // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
      console.log(result)
- }).catch(error => console.error(error));
+  }).catch(error => console.error(error));
+    
+    await cassandraclient.execute("CREATE TABLE texter.channels IF NOT EXISTS (channelid timeuuid, campaignid text, twilionumber text, targeteverresponded boolean, lasteventtype text, lasteventbody text, lasteventtime timeuuid, PRIMARY KEY (campaignid, channelid))")
+        .then(async result => {
+    // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+     console.log(result)
+        }).catch(error => console.error(error));
+    
+    await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.channels (twilionumber);")
+    .then(async result => {
+        // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+         console.log(result)
+    }).catch(error => console.error(error));
+
+    await cassandraclient.execute("CREATE INDEX IF NOT EXISTS ON texter.channels (lasteventtime);")
+    .then(async result => {
+        // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+         console.log(result)
+    }).catch(error => console.error(error));
+    
+    await cassandraclient.execute("CREATE TABLE texter.messages IF NOT EXISTS (snowflake timeuuid, timeonnetwork timeuuid, inbound boolean, outbound boolean, idempotence text, bucket int, campaignid timeuuid, channelid text, twilionumber text, messagesid text, from text, to text, campaignvolunteeruidsender text, body text, messagestatus text, PRIMARY KEY((channelid, bucket), snowflake)) WITH CLUSTERING ORDER BY (snowflake DESC); ")
+    .then(async result => {
+        // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+         console.log(result)
+            }).catch(error => console.error(error));
 
   //Goes inside adorastats keyspace, makes the table "ytvideostats"
   /*

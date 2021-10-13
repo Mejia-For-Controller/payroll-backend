@@ -1,4 +1,4 @@
-import './tracer'; 
+import tracer from './tracer'; 
 import express from 'express';
 import cors from 'cors'
 const app = express();
@@ -69,6 +69,25 @@ app.all('/online', (req, res) => {
 
 app.all('/clean', [cors(),express.json()], (req, res) => {
   res.send(purifyHtml(req.body.text))
+})
+
+app.all('/submitmessage', [cors(),express.json()], (req, res) => {
+  admin
+    .auth()
+    .verifyIdToken(req.body.firebaseToken)
+      .then(async (decodedIdToken) => {
+        console.log(decodedIdToken)
+        // look up memberships
+
+
+    })
+    .catch((error) => {
+      //res.redirect("/login");
+      console.log(error)
+      return res.type('text/plain')
+      .status(401)
+      .send('Invalid');
+    });
 })
 
 app.all('/mycampaigns', [cors(),cookieParser(),express.json()],async (req, res) => {
