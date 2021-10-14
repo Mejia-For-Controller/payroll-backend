@@ -32,7 +32,7 @@ const DOMPurify = createDOMPurify(window);
 
 // define a route handler for the default home page
 app.all("/", cors(), (req, res) => {
-    console.log(req)
+   // console.log(req)
     res.send( "Hello world!" );
 });
 
@@ -47,8 +47,7 @@ app.all('/getMessages',[cors(),cookieParser(),express.json()], (res, req) => {
         const lookupMembershipQuery = "SELECT * FROM texter.memberships WHERE campaignid = ? AND userid = ?"
         const lookupMembershipParams = [req.body.campaignid, decodedIdToken.uid]
         
-        //lookup channel id
-
+        //lookup twilio id
         //lookup latest messages in channel
         //send them to the user
       } else {
@@ -70,6 +69,11 @@ app.all('/online', (req, res) => {
 app.all('/clean', [cors(),express.json()], (req, res) => {
   res.send(purifyHtml(req.body.text))
 })
+
+app.get('/robots.txt', function (req, res) {
+  res.type('text/plain');
+  res.send("User-agent: *\nDisallow: /");
+});
 
 app.all('/submitmessage', [cors(),express.json()], (req, res) => {
   admin
