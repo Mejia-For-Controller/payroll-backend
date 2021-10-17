@@ -97,6 +97,10 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                             const createNewChannelParams = [snowflake, req.params.campaignid, req.body.From, true]
                             channelidToInsertMsg = TimeUuid.now();
                             await cassandraclient.execute(createNewChannelQuery, createNewChannelParams, { prepare: true })
+                                .then((resultOfNewChannel) => {
+                                    cassandraclient.execute("UPDATE texter.channelcount SET channelcount = channelcount + 1 WHERE campaignid = ?;", [req.params.campaignid], { prepare: true })
+                                    .catch(async (stupidchannelerror) => {logger.error(stupidchannelerror)})
+                                })
                                 .catch((error) => {
                                     console.log(error)
                                     logger.error({ type: "cassandraerror" }, error)
@@ -122,8 +126,9 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
 
                 const queryInsertion = 'INSERT INTO texter.messages'
                     + ' (snowflake, timeonnetwork, inbound, outbound, idempotence, bucket, ' +
-                        'campaignid, channelid, twilionumber, messagesid, fromtwilio, totwilio, campaignvolunteeruidsender, body, messagestatus)' +
-                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                    'campaignid, channelid, twilionumber, messagesid, fromtwilio, totwilio, campaignvolunteeruidsender, body, messagestatus,' +
+                    'isautomated, blastid, history, mediaurl, mediatype)' +
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                     
                     var actualTimestamp = snowflake.getDate().getTime();
 
@@ -132,6 +137,27 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                     var channelTimestamp = channelidToInsertMsg.getDate().getTime()
 
                     var bucket = bucketCalc(actualTimestamp, channelTimestamp)
+
+                    var mediaurl = []
+                    var mediatype = []
+
+                    var totalCountOfMedia = req.body.NumMedia
+
+                    var hasMediaState;
+
+                    if (totalCountOfMedia > 0) {
+                        hasMediaState = true;
+                    } else {
+                        hasMediaState = false;
+                    }
+
+                    var insertionsOfMediaCompleted = 0;
+                    //convert twilio's stupid schema into cassandra compatible 2 lists
+                    while (insertionsOfMediaCompleted < totalCountOfMedia) {
+                        mediaurl.push(req.body[`MediaUrl${insertionsOfMediaCompleted}`])
+                        mediatype.push(req.body[`MediaContentType${insertionsOfMediaCompleted}`])
+                        insertionsOfMediaCompleted = insertionsOfMediaCompleted + 1;
+                    }
 
                     const paramsInsertion = [
                     snowflake,
@@ -148,7 +174,12 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                     req.body.To,
                     "inbound",
                     req.body.Body,
-                    req.body.SmsStatus
+                        req.body.SmsStatus,
+                        false,
+                        null,
+                        { "recieved": Long.fromNumber(actualTimestamp) },
+                        mediaurl,
+                        mediatype
                     ]
                     
                     logger.info({ "type": 'incomingmsgparamsinsert', params: paramsInsertion})
@@ -161,7 +192,22 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                         logger.info({ type: "errormessageinsert", error })
                         console.log(error)
                         res.status(500).send("oops")
-                })
+                    })
+                    
+                    //update channel list of events
+                    var queryToUpdateChannelEvents = 'INSERT INTO texter.channelevents (usereversent, campaignid, channelid, timestamp, twilionumber, fromtwilio, totwilio, campaignvolunteeruidassigned, body, type, hasmedia, read) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+                    var paramsToUpdateChannelEvents = [true, req.params.campaignid, channelidToInsertMsg, snowflake, req.body.From, req.body.From, req.body.To, null, req.body.Body,
+                        "inbound", hasMediaState, false]
+                    
+                    cassandraclient.execute(queryToUpdateChannelEvents, paramsToUpdateChannelEvents, { prepare: true })
+                        .then(async (resultChannelEventExecute) => {
+                            logger.info({ type: "resultofchanneleventadd", result: resultChannelEventExecute })
+                            
+                        })
+                        .catch(async (errorOfChannelUpdate) => {
+                            console.log(errorOfChannelUpdate)
+                            logger.error({ type: "errorofchanneleventadd", error: errorOfChannelUpdate })
+                    })
                 } else {
                     console.log("invalid account sid")
                     res.status(404).send("This campaign doesn't exist!")
@@ -185,5 +231,52 @@ twiliorouter.all('/statuscallback/:campaignid', [twilioFormat], function(req, re
    //do a lookup of the campaign, see if it exists, and validate the accound sid and twilio origin
 
         // if it exists, update the status of that specific message
-        res.send("Success")
+    res.send("Success")
+    
+    var snowflake = TimeUuid.now();
+    var idemp = generateIdempotency();
+    console.log(req)
+    tracer.trace('incomingmsg', async () => {
+        console.log(req.body)
+        //do a lookup of the campaign, see if it exists, and validate the accound sid and twilio origin
+        await cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ?", [req.params.campaignid]).then(async (result) => {
+            // if it exists, add the text message to the text database
+            if (result.rows.length > 0) {
+                // Your Auth Token from twilio.com/console
+                const authToken = result.rows[0].authtoken;
+
+                // The Twilio request URL
+                const url = `https://api.text.mejiaforcontroller.com/twilio/statuscallback/${req.params.campaignid}`;
+
+                // The post variables in Twilio's request
+                const params = req.body
+          
+            
+                // The X-Twilio-Signature header attached to the request
+                const twilioSignature = req.header('X-Twilio-Signature');
+                console.log('twilioSignature', twilioSignature)
+            
+                logger.info({
+                    "type": "ingestmessage",
+                    "params": req.body,
+                    "authToken": authToken,
+                    "twilioSignature": twilioSignature,
+                    "url": url,
+                    "paramsToVerify": params
+                
+                })
+       
+         
+                console.log('validate response')
+                var resultOfValidation = await twilio.validateRequest(authToken, twilioSignature, url, params);
+                console.log(resultOfValidation)
+                console.log("result of validation", typeof (resultOfValidation))
+                console.log('validate done')
+
+
+                if (resultOfValidation === true) {
+                }
+            }
+        })
+    })
 });

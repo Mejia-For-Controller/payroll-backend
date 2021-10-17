@@ -8,12 +8,15 @@
     "build": "tsc",
     "prestart": "npm run build",
     "start": "node .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "fullsync": "npm run build && npm run kylersync",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "kylersync": " rsync -av --progress -e \"ssh -i /home/kyler/KylersMejiaCampaignKeyPair.pem\" $(pwd)/dist ubuntu@api.text.mejiaforcontroller.com:/home/ubuntu/texting-backend"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/node": "^16.10.2",
+    "axios": "^0.23.0",
     "cassandra-driver": "^4.6.3",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
@@ -24,6 +27,8 @@
     "helmet": "^4.6.0",
     "http2": "^3.3.7",
     "jsdom": "^17.0.0",
+    "qs": "^6.10.1",
+    "querystring": "^0.2.1",
     "tslint": "^6.1.3",
     "twilio": "^3.68.0",
     "typescript": "^4.4.3",

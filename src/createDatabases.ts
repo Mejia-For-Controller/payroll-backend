@@ -23,8 +23,14 @@ export async function createDatabases() {
          // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
        //   console.log(result)
       }).catch(error => console.error(error));
+  
+      await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.invitations (campaignid text, email text, joinedtime timeuuid, isowner boolean, isadmin boolean, accepted boolean, PRIMARY KEY (campaignid, email)); ")
+      .then(async result => {
+         // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+       //   console.log(result)
+      }).catch(error => console.error(error));
     
-    await cassandraclient.execute("CREATE TABLE  IF NOT EXISTS texter.channels (channelid timeuuid, campaignid text, twilionumber text, targeteverresponded boolean, PRIMARY KEY (campaignid, twilionumber))")
+    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.channels (channelid timeuuid, campaignid text, twilionumber text, targeteverresponded boolean, PRIMARY KEY (campaignid, twilionumber))")
         .then(async result => {
     // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
     // console.log(result)
@@ -36,12 +42,25 @@ export async function createDatabases() {
      //    console.log(result)
     }).catch(error => console.error(error));
     
-    await cassandraclient.execute("CREATE TABLE  IF NOT EXISTS texter.messages (snowflake timeuuid, timeonnetwork bigint, inbound boolean, outbound boolean, idempotence text, bucket int, campaignid text, channelid timeuuid, twilionumber text, messagesid text, fromtwilio text, totwilio text, campaignvolunteeruidsender text, body text, messagestatus text, PRIMARY KEY((channelid, bucket), snowflake)) WITH CLUSTERING ORDER BY (snowflake DESC); ")
+    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.messages (snowflake timeuuid, timeonnetwork bigint, inbound boolean, outbound boolean, idempotence text, bucket int, campaignid text, channelid timeuuid, twilionumber text, messagesid text, fromtwilio text, totwilio text, campaignvolunteeruidsender text, body text, messagestatus text, isautomated boolean, blastid timeuuid, history map<text,bigint>,mediaurl list<text>, mediatype list<text>, PRIMARY KEY((channelid, bucket), snowflake)) WITH CLUSTERING ORDER BY (snowflake DESC); ")
+    .then(async result => {
+        // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+     //    console.log(result)
+    }).catch(error => console.error(error));
+  
+    await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.channelevents (usereversent boolean, campaignid text, channelid timeuuid, timestamp timeuuid, twilionumber text, fromtwilio text, totwilio text, campaignvolunteeruidassigned text, body text, type text, hasmedia boolean, read boolean, PRIMARY KEY(campaignid, timestamp)) WITH CLUSTERING ORDER BY (timestamp DESC) AND gc_grace_seconds = 3600; ")
     .then(async result => {
         // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
      //    console.log(result)
             }).catch(error => console.error(error));
 
+            await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.messagesid (messagesid text PRIMARY KEY, snowflake timeuuid) ")
+            .then(async result => {
+                // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+             //    console.log(result)
+                    }).catch(error => console.error(error));
+        
+  
   //Goes inside adorastats keyspace, makes the table "ytvideostats"
   /*
   await cassandraclient.execute("CREATE TABLE IF NOT EXISTS texter.messages (campaignid text PRIMARY KEY, content text, twilionumber text, campaignauthorid text);")

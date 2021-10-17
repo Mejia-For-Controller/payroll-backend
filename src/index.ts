@@ -4,13 +4,44 @@ import cors from 'cors'
 const app = express();
 const port = 3000; // default port to listen
 import { twiliorouter } from "./routes/twilio";
+const TimeUuid = require('cassandra-driver').types.TimeUuid;
 import * as admin from 'firebase-admin';
 const serviceAccount = require("./../serviceAccountKey.json");
 import { createDatabases } from './createDatabases'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import { cassandraclient } from './cassandra'
-const TimeUuid = require('cassandra-driver').types.TimeUuid;
+import {logger} from './logger'
+import axios from 'axios'
+import qs from 'qs';
+import { bucketCalc } from './utils';
+const Long = require('cassandra-driver').types.Long;
+
+global.msidtosnowflake = {
+
+};
+
+var cacheOfSecureTokens = {
+}
+
+function withCacheVerifyIdToken(firebaseToken) {
+  return new Promise<admin.auth.DecodedIdToken>((resolve, reject) => {
+    if (cacheOfSecureTokens[firebaseToken]) {
+      resolve(cacheOfSecureTokens[firebaseToken])
+    } else {
+      admin
+        .auth()
+        .verifyIdToken(firebaseToken)
+        .then(async (decodedIdToken) => {
+          resolve(decodedIdToken)
+        })
+        .catch((error) => {
+          reject(error)
+        })
+    }
+  })
+}
+
 
 createDatabases()
 
@@ -36,27 +67,6 @@ app.all("/", cors(), (req, res) => {
     res.send( "Hello world!" );
 });
 
-app.all('/getMessages',[cors(),cookieParser(),express.json()], (res, req) => {
-  admin
-    .auth()
-    .verifyIdToken(req.body.firebaseToken)
-    .then(async (decodedIdToken) => {
-      if (req.body.campaignid) {
-        //campaignid provided
-        // lookup membership of user in campaign id
-        const lookupMembershipQuery = "SELECT * FROM texter.memberships WHERE campaignid = ? AND userid = ?"
-        const lookupMembershipParams = [req.body.campaignid, decodedIdToken.uid]
-        
-        //lookup twilio id
-        //lookup latest messages in channel
-        //send them to the user
-      } else {
-        res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({"message": "no campaign id provided"}));
-      }
-    });
-})
-
 function purifyHtml(input) {
   return DOMPurify.sanitize(input, {USE_PROFILES: {html: false}});
 }
@@ -75,14 +85,398 @@ app.get('/robots.txt', function (req, res) {
   res.send("User-agent: *\nDisallow: /");
 });
 
-app.all('/submitmessage', [cors(),express.json()], (req, res) => {
-  admin
-    .auth()
-    .verifyIdToken(req.body.firebaseToken)
-      .then(async (decodedIdToken) => {
-        console.log(decodedIdToken)
-        // look up memberships
+app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], function (req, res) {
+   //const sessionCookie = req.cookies.session || "";
+  //console.log(sessionCookie)
+  withCacheVerifyIdToken(req.body.firebaseToken)
+    .then(async (decodedIdToken) => {
+     // console.log(decodedIdToken, decodedIdToken)
+    //  console.log(`req.body.campaignid`,req.body.campaignid)
+      // look up memberships
 
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+
+          await cassandraclient.execute("SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?", [req.body.campaignid, req.body.twilionumber])
+            .then((channelresult) => {
+          //  console.log(channelresult)
+            cassandraclient.execute("SELECT * FROM texter.messages WHERE channelid = ? and bucket = ?", [channelresult.rows[0].channelid,0], {prepare: true})
+            .then((result) => {
+              var messagesArray = []
+              result.rows.forEach(async (eachRow) => {
+               // console.log(eachRow.body)
+                messagesArray.push({
+                  body: eachRow.body,
+                  from: eachRow.fromtwilio,
+                  to: eachRow.fromtwilio,
+                  timestamp: eachRow.snowflake.getDate().getTime(),
+                  idempotence: eachRow.idempotence,
+                  messagestatus: eachRow.messagestatus,
+                  isautomated: eachRow.isAutomated,
+                  inbound: eachRow.inbound,
+                  outbound: eachRow.outbound,
+                  dateToUse: eachRow.snowflake.getDate().getTime(),
+                  twilionumber: eachRow.twilionumber
+                })
+              })
+              return res.json({
+                messages: messagesArray
+              })
+            })
+              .catch((error) => {
+              res.type('text/plain').status(500).send(error)
+              console.log(error)
+            })
+          })
+            .catch((error) => {
+            console.log(error)
+            return res.type('text/plain')
+          .status(500)
+          .send('Query for Channel failed');
+        })
+
+       
+        } else {
+          return res.type('text/plain')
+          .status(401)
+          .send('Invalid, membership nonexistant');
+        }
+
+      }).catch((error) => {
+      //res.redirect("/login");
+      console.log(error)
+      return res.type('text/plain')
+        .status(500)
+        .send('Query for Membership failed');
+    });
+        
+     
+    }).catch((error) => {
+      //res.redirect("/login");
+      console.log(error)
+      return res.type('text/plain')
+        .status(401)
+        .send('Invalid, Auth Failed');
+    });
+})
+
+app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (req, res) => {
+  //const sessionCookie = req.cookies.session || "";
+  //console.log(sessionCookie)
+  withCacheVerifyIdToken(req.body.firebaseToken)
+    .then(async (decodedIdToken) => {
+     // console.log(decodedIdToken, decodedIdToken)
+    //  console.log(`req.body.campaignid`,req.body.campaignid)
+      // look up memberships
+
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+          cassandraclient.execute("SELECT * FROM texter.channelevents WHERE campaignid = ? ", [req.body.campaignid])
+          .then((result) => {
+            var eventsArray = []
+            result.rows.forEach(async (eachRow) => {
+              //the row twilio number already exists in the array
+              if (eventsArray.some(rowChecker => rowChecker.twilionumber === eachRow.twilionumber)) {
+                var eventOfConcern = eventsArray.filter(rowChecker => rowChecker.twilionumber === eachRow.twilionumber)[0]
+                if (eventOfConcern.timestamp < eachRow.timestamp.getDate().getTime()) {
+                    //delete the old event
+                  eventsArray = eventsArray.filter((eachEventFilter) => (eventOfConcern != eachEventFilter))
+                  //add new one
+                  eventsArray.push({
+                    channelid: eachRow.channelid,
+                    timestamp: eachRow.timestamp.getDate().getTime(),
+                    twilionumber: eachRow.twilionumber,
+                    type: eachRow.text,
+                    body: eachRow.body,
+                    fromtwilio: eachRow.fromtwilio,
+                    totwilio: eachRow.totwilio
+                  })
+                  }
+              } else {
+                eventsArray.push({
+                  channelid: eachRow.channelid,
+                  timestamp: eachRow.timestamp.getDate().getTime(),
+                  twilionumber: eachRow.twilionumber,
+                  type: eachRow.text,
+                  body: eachRow.body,
+                  fromtwilio: eachRow.fromtwilio,
+                  totwilio: eachRow.totwilio
+                })
+             }
+            })
+            return res.json({
+              events: eventsArray
+            })
+          })
+          .catch((error) => {
+            console.log(error)
+          })
+        } else {
+          return res.type('text/plain')
+          .status(401)
+          .send('Invalid, membership nonexistant');
+        }
+
+      }).catch((error) => {
+      //res.redirect("/login");
+      console.log(error)
+      return res.type('text/plain')
+        .status(500)
+        .send('Query for Membership failed');
+    });
+        
+     
+    }).catch((error) => {
+      //res.redirect("/login");
+      console.log(error)
+      return res.type('text/plain')
+        .status(401)
+        .send('Invalid, Auth Failed');
+    });
+});
+      
+
+app.all('/submitmessage', [cors(), express.json()], (req, res) => {
+  var currentSnowflake = TimeUuid.now()
+  /*
+  {
+  campaignid,
+  twilionumber
+  bodyofmessage,
+  firebaseToken,
+  idempotence
+  }
+  */
+  
+  if (!(req.body.idempotence)) {
+    return res.end("BRUH WHERE THE IDEMP")
+  }
+
+  if (!(req.body.campaignid)) {
+    return res.end("BRUH WHERE THE CAMPAIGNID")
+  }
+  
+  var idempotence = req.body.idempotence
+  withCacheVerifyIdToken(req.body.firebaseToken)
+      .then(async (decodedIdToken) => {
+      //  console.log(decodedIdToken)
+        // look up memberships
+       // console.log(`req.body.campaignid`,req.body.campaignid)
+        // look up memberships
+  
+        const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+        const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+  
+       
+  
+        await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+          if (membershipsforuid.rows.length > 0) {
+
+            await cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ?", [req.body.campaignid], {prepare: true})
+              .then(async (campaignquerysettings) => {
+              
+                if (campaignquerysettings.rows.length > 0) {
+
+                  var campaignresult = campaignquerysettings.rows[0]
+                  await cassandraclient.execute("SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?", [req.body.campaignid, req.body.twilionumber])
+                  .then((channelresult) => {
+                    console.log(channelresult)
+                    //channelresult.rows[0].channelid
+
+                    var headers: any = { 'content-type': 'application/x-www-form-urlencoded' }
+                    const regexValidSid = new RegExp('^[a-zA-Z0-9]+$');
+
+                    if (regexValidSid.test(campaignresult.accountsid)) {
+                      var b64Auth = Buffer.from(campaignresult.accountsid + ':' + campaignresult.authtoken).toString('base64');
+                      headers.Authorization = 'Basic ' + b64Auth;
+
+                      //POST https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/Messages.json
+
+                      const data = {
+                        'From': campaignresult.messagingservicesid,
+                        'To': req.body.twilionumber,
+                        'Body': req.body.bodyofmessage
+                      };
+
+                      var urlSendMsgTwilio = `https://api.twilio.com/2010-04-01/Accounts/${campaignresult.accountsid}/Messages.json`
+                      
+                      const options:any = {
+                        method: 'POST',
+                        headers: headers,
+                        data: qs.stringify(data),
+                        url: urlSendMsgTwilio,
+                      };
+
+                      axios(options)
+                      .then(async (response:any) => {
+                        console.log(response);
+
+      
+                        try { logger.info({ type: 'instantresponsetwilio', responsedata: response.data }) }
+                        catch (error) {console.log(error)}
+                        
+                        // create chnanel
+                        const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?"
+                        const paramsForChannelsSearch = [req.body.campaignid, req.body.twilionumber]
+
+                        var channelidToInsertMsg: any;
+                        //create message
+
+                        await cassandraclient.execute(queryForChannelsSearch, paramsForChannelsSearch, { prepare: true })
+                        .then(async (resultFromChannelSearch) => {
+                            console.log("searched for channels")
+                            if (resultFromChannelSearch.rows.length === 0) {
+                            //create the channel
+                            const createNewChannelQuery = "INSERT INTO texter.channels (channelid, campaignid, twilionumber, targeteverresponded) VALUES (?, ?, ?, ?)"
+                                const createNewChannelParams = [currentSnowflake, req.body.campaignid, req.body.twilionumber, false]
+                                channelidToInsertMsg = TimeUuid.now();
+                                await cassandraclient.execute(createNewChannelQuery, createNewChannelParams, { prepare: true })
+                                    .then((resultOfNewChannel) => {
+                                        cassandraclient.execute("UPDATE texter.channelcount SET channelcount = channelcount + 1 WHERE campaignid = ?;", [req.body.campaignid], { prepare: true })
+                                        .catch(async (stupidchannelerror) => {logger.error(stupidchannelerror)})
+                                    })
+                                    .catch((error) => {
+                                        console.log(error)
+                                        logger.error({ type: "cassandraerror" }, error)
+                                    })
+                            } else {
+                                //update the channel with the latest msg content
+                                channelidToInsertMsg = resultFromChannelSearch.rows[0].channelid
+                        }
+                        })
+
+                        ///// INSERT TWILIO MSG INTO CASSANDRA
+
+                        const queryInsertion = 'INSERT INTO texter.messages'
+                    + ' (snowflake, timeonnetwork, inbound, outbound, idempotence, bucket, ' +
+                    'campaignid, channelid, twilionumber, messagesid, fromtwilio, totwilio, campaignvolunteeruidsender, body, messagestatus,' +
+                    'isautomated, blastid, history, mediaurl, mediatype)' +
+                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                    
+                    var actualTimestamp = currentSnowflake.getDate().getTime();
+
+                    console.log('actualTimestamp', actualTimestamp)
+                    
+                    var channelTimestamp = channelidToInsertMsg.getDate().getTime()    
+                        
+                    var bucket = bucketCalc(actualTimestamp, channelTimestamp)
+
+                    var mediaurl = []
+                    var mediatype = []
+
+                    var totalCountOfMedia = req.body.num_media
+
+                    var hasMediaState;
+
+                    if (totalCountOfMedia > 0) {
+                        hasMediaState = true;
+                    } else {
+                        hasMediaState = false;
+                    }
+
+                    var insertionsOfMediaCompleted = 0;
+                    //convert twilio's stupid schema into cassandra compatible 2 lists
+                    while (insertionsOfMediaCompleted < totalCountOfMedia) {
+                        mediaurl.push(req.body[`MediaUrl${insertionsOfMediaCompleted}`])
+                        mediatype.push(req.body[`MediaContentType${insertionsOfMediaCompleted}`])
+                        insertionsOfMediaCompleted = insertionsOfMediaCompleted + 1;
+                    }
+
+                        var objectOfHistory = {
+                          
+                        }
+
+                        objectOfHistory[response.data.status] = Long.fromNumber(actualTimestamp) 
+                        
+                    const paramsInsertion = [
+                      currentSnowflake,
+                    Long.fromNumber(actualTimestamp),
+                    false,
+                    true,
+                    idempotence,
+                    bucket,
+                    req.body.campaignid,
+                    channelidToInsertMsg,
+                    req.body.twilionumber,
+                    response.data.sid,
+                    response.data.from,
+                    response.data.to,
+                    "outbound",
+                    response.data.body,
+                    response.data.status,
+                    false,
+                    null,
+                    objectOfHistory,
+                    mediaurl,
+                    mediatype
+                    ]
+                    
+                    logger.info({ "type": 'outgoingmsgparamsinsert', params: paramsInsertion})
+                
+                    await cassandraclient.execute(queryInsertion, paramsInsertion, { prepare: true }).then((resultOfMessageInsert) => {
+                        logger.info({ type: "resultofmessageinsert", cassandra: resultOfMessageInsert })
+                      console.log(resultOfMessageInsert)
+                      console.log('sending it back to client')
+                        res.end({ "success": true })
+                    }).catch((error) => {
+                        logger.info({ type: "errormessageinsert", error })
+                        console.log(error)
+                        res.status(500).send("oops")
+                    })
+                        //EXIT TWILIO MSG
+
+
+                      })
+                      .catch(function (error) {
+                        console.log(error);
+                        logger.info({ type: 'instantresponsetwilioerror', error: error })
+                        res.send('ooops, twilio crashed')
+                      });
+                    } else {
+                     
+                  return res.type('text/plain')
+                .status(500)
+                .send('Invalid Twilio SID');
+                    }
+
+                  
+
+
+                })
+                  .catch((error) => {
+                  console.log(error)
+                  return res.type('text/plain')
+                .status(500)
+                .send('Query for Channel failed');
+              })
+                }
+
+              
+  
+          }).catch(res.status(500).send('Query for Campaign failed'))
+  
+          
+         
+          } else {
+            return res.type('text/plain')
+            .status(401)
+            .send('Invalid, membership nonexistant');
+          }
+  
+        }).catch((error) => {
+        //res.redirect("/login");
+        console.log(error)
+        return res.type('text/plain')
+          .status(500)
+          .send('Query for Membership failed');
+      });
 
     })
     .catch((error) => {
@@ -101,7 +495,7 @@ app.all('/mycampaigns', [cors(),cookieParser(),express.json()],async (req, res) 
     .auth()
     .verifyIdToken(req.body.firebaseToken)
       .then(async (decodedIdToken) => {
-        console.log(decodedIdToken)
+     //   console.log(decodedIdToken)
         // look up memberships
 
         const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ?'
@@ -264,7 +658,7 @@ app.all('/createcampaign', [cors(),cookieParser(),express.json()], (req, res) =>
     .auth()
     .verifyIdToken(req.body.firebaseToken)
       .then((decodedIdToken) => {
-        console.log(decodedIdToken)
+       // console.log(decodedIdToken)
         // ensure authorized user kyler@mejiaforcontroller.com
 
         if (decodedIdToken.uid === "pDU7JvlefcTtGnSssyMo1hhneqO2") {
