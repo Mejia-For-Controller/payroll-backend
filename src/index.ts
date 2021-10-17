@@ -16,6 +16,7 @@ import axios from 'axios'
 import qs from 'qs';
 import { bucketCalc } from './utils';
 const Long = require('cassandra-driver').types.Long;
+var rangeInclusive = require('range-inclusive')
 
 global.msidtosnowflake = {
 
@@ -103,34 +104,49 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
 
           await cassandraclient.execute("SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?", [req.body.campaignid, req.body.twilionumber])
             .then((channelresult) => {
-          //  console.log(channelresult)
-            cassandraclient.execute("SELECT * FROM texter.messages WHERE channelid = ? and bucket = ?", [channelresult.rows[0].channelid,0], {prepare: true})
-            .then((result) => {
-              var messagesArray = []
-              result.rows.forEach(async (eachRow) => {
-               // console.log(eachRow.body)
-                messagesArray.push({
-                  body: eachRow.body,
-                  from: eachRow.fromtwilio,
-                  to: eachRow.fromtwilio,
-                  timestamp: eachRow.snowflake.getDate().getTime(),
-                  idempotence: eachRow.idempotence,
-                  messagestatus: eachRow.messagestatus,
-                  isautomated: eachRow.isAutomated,
-                  inbound: eachRow.inbound,
-                  outbound: eachRow.outbound,
-                  dateToUse: eachRow.snowflake.getDate().getTime(),
-                  twilionumber: eachRow.twilionumber
+
+              var channeltimestamp = channelresult.rows[0].channelid.getDate().getTime();
+       
+              var rangeOfBuckets = rangeInclusive(0, bucketCalc(Date.now(), channeltimestamp), 1);
+
+              const queryForTextsInThisBucket = "SELECT * FROM texter.messages WHERE channelid = ? and bucket = ?"
+
+              var promisesForAllBuckets = rangeOfBuckets.map((itemBucket, indexBucket) =>
+                cassandraclient.execute(queryForTextsInThisBucket, [channelresult.rows[0].channelid, itemBucket], { prepare: true }))
+              
+              Promise.all(promisesForAllBuckets).then((values) => {
+                console.log(values);
+
+                var allMessagesInOneArray = [];
+
+                values.forEach((eachBucketResult:any) => {
+                  allMessagesInOneArray = [...allMessagesInOneArray, ...eachBucketResult.rows]
                 })
-              })
-              return res.json({
-                messages: messagesArray
-              })
-            })
-              .catch((error) => {
-              res.type('text/plain').status(500).send(error)
-              console.log(error)
-            })
+
+                var messagesArray = allMessagesInOneArray.map((eachRow) => {
+                  return {
+                    body: eachRow.body,
+                    from: eachRow.fromtwilio,
+                    to: eachRow.fromtwilio,
+                    timestamp: eachRow.snowflake.getDate().getTime(),
+                    idempotence: eachRow.idempotence,
+                    messagestatus: eachRow.messagestatus,
+                    isautomated: eachRow.isAutomated,
+                    inbound: eachRow.inbound,
+                    outbound: eachRow.outbound,
+                    dateToUse: eachRow.snowflake.getDate().getTime(),
+                    twilionumber: eachRow.twilionumber
+                  }
+                })
+
+                return res.json({
+                  messages: messagesArray
+                })
+              }) .catch((error) => {
+                res.type('text/plain').status(500).send("cassandra fetching messages error")
+                console.log(error)
+              });
+             
           })
             .catch((error) => {
             console.log(error)
