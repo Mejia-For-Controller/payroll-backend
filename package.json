@@ -27,6 +27,7 @@
     "helmet": "^4.6.0",
     "http2": "^3.3.7",
     "jsdom": "^17.0.0",
+    "node-cache": "^5.1.2",
     "qs": "^6.10.1",
     "querystring": "^0.2.1",
     "range-inclusive": "^1.0.2",

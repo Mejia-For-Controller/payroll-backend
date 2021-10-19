@@ -15,26 +15,34 @@ import {logger} from './logger'
 import axios from 'axios'
 import qs from 'qs';
 import { bucketCalc } from './utils';
+import { myCache } from './cache';
 const Long = require('cassandra-driver').types.Long;
 var rangeInclusive = require('range-inclusive')
 
-global.msidtosnowflake = {
-
-};
-
 var cacheOfSecureTokens = {
+}
+
+function uploadUserDetailsFromDecodedIdToken(decodedIdToken) {
+  cassandraclient.execute("INSERT INTO texter.userinfo (uid, email, name, picture) VALUES (?,?,?,?)",
+  [decodedIdToken.uid, decodedIdToken.email, decodedIdToken.name, decodedIdToken.picture],
+{prepare: true})
+  .then((resultofuserupdate) => console.log(resultofuserupdate))
+.catch((error) => {console.log(error)})
 }
 
 function withCacheVerifyIdToken(firebaseToken) {
   return new Promise<admin.auth.DecodedIdToken>((resolve, reject) => {
     if (cacheOfSecureTokens[firebaseToken]) {
       resolve(cacheOfSecureTokens[firebaseToken])
+    uploadUserDetailsFromDecodedIdToken(cacheOfSecureTokens[firebaseToken])
     } else {
       admin
         .auth()
         .verifyIdToken(firebaseToken)
         .then(async (decodedIdToken) => {
           resolve(decodedIdToken)
+          cacheOfSecureTokens[firebaseToken] = decodedIdToken;
+          uploadUserDetailsFromDecodedIdToken(decodedIdToken)
         })
         .catch((error) => {
           reject(error)
@@ -77,6 +85,11 @@ app.all('/online', (req, res) => {
   res.end(JSON.stringify({"online": true,"time": Date.now()}));
 })
 
+app.all('/securetokens', (req, res) => {
+  console.log(cacheOfSecureTokens)
+  res.end('success')
+})
+
 app.all('/clean', [cors(),express.json()], (req, res) => {
   res.send(purifyHtml(req.body.text))
 })
@@ -85,6 +98,139 @@ app.get('/robots.txt', function (req, res) {
   res.type('text/plain');
   res.send("User-agent: *\nDisallow: /");
 });
+
+app.all('/getmembershiproster', [cors(), cookieParser(), express.json()], function (req, res) {
+  withCacheVerifyIdToken(req.body.firebaseToken)
+    .then(async (decodedIdToken) => {
+
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+          if (membershipsforuid.rows[0].isadmin || membershipsforuid.rows[0].isowner) {
+            //authorized
+
+            
+
+            const queryformembershiplist = 'SELECT * FROM texter.memberships WHERE campaignid = ?'
+            const paramsformembershiplist = [req.body.campaignid]
+            
+            await Promise.all([
+              cassandraclient.execute('SELECT * FROM texter.invitations WHERE campaignid =?',
+                [req.body.campaignid], { prepare: true }),
+                 cassandraclient.execute(queryformembershiplist, paramsformembershiplist, { prepare: true })
+            ]).then((resultOfBothCassandraQueries) => {
+
+              var rowsOfInvites = resultOfBothCassandraQueries[0].rows
+
+              var resultOfMembershipList = resultOfBothCassandraQueries[1]
+                console.log(resultOfMembershipList)
+
+                // map all of them into promises
+                var rowsOfMembership = resultOfMembershipList.rows;
+
+                var promisesMembershipLookup = rowsOfMembership.map((eachRow) => cassandraclient.execute('SELECT * FROM texter.userinfo WHERE uid = ?', [eachRow.userid], {prepare: true}))
+                
+                //fetch them from the database via promise all
+                Promise.all(promisesMembershipLookup)
+                  .then((usersProfileResponse) => {
+                    //usersProfileResponse is an array of cassandra formats
+                    var resultToSendBack = usersProfileResponse.map((eachUserProfile:any, eachUserProfileIndex:any) => {
+                      //eachUserProfile is a cassandra format
+                      if (eachUserProfile.rows.length === 0) {
+                        return {
+                          name: "null",
+                          uid: rowsOfMembership[eachUserProfileIndex].userid,
+                          email: "null",
+                          picture: "null",
+                          isowner: rowsOfMembership[eachUserProfileIndex].isowner,
+                          isadmin: rowsOfMembership[eachUserProfileIndex].isadmin,
+                          isvolunteer: rowsOfMembership[eachUserProfileIndex].isvolunteer,
+                          joinedtimestamp: rowsOfMembership[eachUserProfileIndex].joinedtime.getDate().getTime()
+                      }
+                      } else {
+                        return {
+                          name: eachUserProfile.rows[0].name,
+                          uid: eachUserProfile.rows[0].uid,
+                          email: eachUserProfile.rows[0].email,
+                          picture: eachUserProfile.rows[0].picture,
+                          isowner: rowsOfMembership[eachUserProfileIndex].isowner,
+                          isadmin: rowsOfMembership[eachUserProfileIndex].isadmin,
+                          isvolunteer: rowsOfMembership[eachUserProfileIndex].isvolunteer,
+                          joinedtimestamp: rowsOfMembership[eachUserProfileIndex].joinedtime.getDate().getTime()
+                      }
+                      }
+
+                      
+                    })
+                    
+                    res.send({
+                      members: resultToSendBack,
+                      invites: rowsOfInvites
+                    })
+                })
+
+                // then return the result
+              })
+              .catch((error) => {
+              console.log(error)
+            })
+          } else {
+            res.send({
+              "success": false
+            })
+          }
+        }
+      })
+    });
+  
+  
+}
+)
+
+
+app.all('/invitenewemail', [cors(), cookieParser(), express.json()], function (req, res) {
+  withCacheVerifyIdToken(req.body.firebaseToken)
+    .then(async (decodedIdToken) => {
+
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+          if (membershipsforuid.rows[0].isadmin || membershipsforuid.rows[0].isowner) {
+            //authorized
+
+            
+
+            const insertinvitelist = 'INSERT INTO texter.invitations (campaignid, email, invitetime, isowner, isadmin, accepted) VALUES (?,?,?,?,?,?)'
+
+            var adminState = false;
+
+            if (req.body.permissions === "admin") {
+              adminState = true
+            }
+
+            var paramsinsertinvitelist = [req.body.campaignid,req.body.email,TimeUuid.now(),false,adminState,false]
+           
+            cassandraclient.execute(insertinvitelist, paramsinsertinvitelist, { prepare: true })
+              .then((result) => {
+              res.send({success: true})
+            }).catch((error) => {console.log(error)})
+          } else {
+            res.send({
+              "success": false,
+              "noperms": true
+            })
+          }
+        }
+      })
+    });
+  
+  
+}
+)
 
 app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], function (req, res) {
    //const sessionCookie = req.cookies.session || "";
@@ -115,7 +261,7 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
                 cassandraclient.execute(queryForTextsInThisBucket, [channelresult.rows[0].channelid, itemBucket], { prepare: true }))
               
               Promise.all(promisesForAllBuckets).then((values) => {
-                console.log(values);
+              //  console.log(values);
 
                 var allMessagesInOneArray = [];
 
@@ -124,6 +270,21 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
                 })
 
                 var messagesArray = allMessagesInOneArray.map((eachRow) => {
+                 
+                  var mediaArray = []
+
+                  if (eachRow.mediaurl && eachRow.mediatype) {
+                    if (eachRow.mediaurl.length === eachRow.mediatype.length) {
+                      //valid
+                      mediaArray = eachRow.mediatype.map((mediatypeeach, mediaindex) => {
+                        return {
+                          type: mediatypeeach,
+                          url: eachRow.mediaurl[mediaindex]
+                        }
+                      })
+                    }
+                  }
+
                   return {
                     body: eachRow.body,
                     from: eachRow.fromtwilio,
@@ -135,7 +296,8 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
                     inbound: eachRow.inbound,
                     outbound: eachRow.outbound,
                     dateToUse: eachRow.snowflake.getDate().getTime(),
-                    twilionumber: eachRow.twilionumber
+                    twilionumber: eachRow.twilionumber,
+                    media: mediaArray
                   }
                 })
 
@@ -179,6 +341,8 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
         .send('Invalid, Auth Failed');
     });
 })
+
+app.all('/invitetocampaign', [cors(), cookieParser(), express.json()])
 
 app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (req, res) => {
   //const sessionCookie = req.cookies.session || "";
@@ -301,10 +465,37 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
                 if (campaignquerysettings.rows.length > 0) {
 
                   var campaignresult = campaignquerysettings.rows[0]
-                  await cassandraclient.execute("SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?", [req.body.campaignid, req.body.twilionumber])
-                  .then((channelresult) => {
-                    console.log(channelresult)
-                    //channelresult.rows[0].channelid
+
+
+                  //create the channel
+                // create chnanel
+                const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?"
+                const paramsForChannelsSearch = [req.body.campaignid, req.body.twilionumber]
+
+                var channelidToInsertMsg: any;
+
+                await cassandraclient.execute(queryForChannelsSearch, paramsForChannelsSearch, { prepare: true })
+                .then(async (resultFromChannelSearch) => {
+                    console.log("searched for channels")
+                    if (resultFromChannelSearch.rows.length === 0) {
+                    //create the channel
+                    const createNewChannelQuery = "INSERT INTO texter.channels (channelid, campaignid, twilionumber, targeteverresponded) VALUES (?, ?, ?, ?)"
+                        const createNewChannelParams = [currentSnowflake, req.body.campaignid, req.body.twilionumber, false]
+                        channelidToInsertMsg =currentSnowflake;
+                        await cassandraclient.execute(createNewChannelQuery, createNewChannelParams, { prepare: true })
+                            .then((resultOfNewChannel) => {
+                                cassandraclient.execute("UPDATE texter.channelcount SET channelcount = channelcount + 1 WHERE campaignid = ?;", [req.body.campaignid], { prepare: true })
+                                .catch(async (stupidchannelerror) => {logger.error(stupidchannelerror)})
+                            })
+                            .catch((error) => {
+                                console.log(error)
+                                logger.error({ type: "cassandraerror" }, error)
+                            })
+                    } else {
+                        channelidToInsertMsg = resultFromChannelSearch.rows[0].channelid
+                }
+                })
+                  //end create the channels
 
                     var headers: any = { 'content-type': 'application/x-www-form-urlencoded' }
                     const regexValidSid = new RegExp('^[a-zA-Z0-9]+$');
@@ -331,42 +522,25 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
                       };
 
                       axios(options)
-                      .then(async (response:any) => {
-                        console.log(response);
+                        .then(async (response: any) => {
+                          //msidtosnowflake[response.data.sid] = currentSnowflake;
+                         // setMsid2Snowflake(response.data.sid,currentSnowflake)
+
+                          console.log(response);
+                          
+                          myCache.set( response.data.sid, currentSnowflake, 10000 );
+
+                          cassandraclient.execute("INSERT INTO texter.messagesid (messagesid, snowflake) VALUES (?, ?)", [response.data.sid, currentSnowflake], {prepare: true})
+                            .then((resultofsid) => {
+                            
+                            }).catch((error) => {
+                              console.log(error);
+                              logger.error({type:'cassandramsidcacheerror', error: error})
+                            })
 
       
                         try { logger.info({ type: 'instantresponsetwilio', responsedata: response.data }) }
                         catch (error) {console.log(error)}
-                        
-                        // create chnanel
-                        const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?"
-                        const paramsForChannelsSearch = [req.body.campaignid, req.body.twilionumber]
-
-                        var channelidToInsertMsg: any;
-                        //create message
-
-                        await cassandraclient.execute(queryForChannelsSearch, paramsForChannelsSearch, { prepare: true })
-                        .then(async (resultFromChannelSearch) => {
-                            console.log("searched for channels")
-                            if (resultFromChannelSearch.rows.length === 0) {
-                            //create the channel
-                            const createNewChannelQuery = "INSERT INTO texter.channels (channelid, campaignid, twilionumber, targeteverresponded) VALUES (?, ?, ?, ?)"
-                                const createNewChannelParams = [currentSnowflake, req.body.campaignid, req.body.twilionumber, false]
-                                channelidToInsertMsg = TimeUuid.now();
-                                await cassandraclient.execute(createNewChannelQuery, createNewChannelParams, { prepare: true })
-                                    .then((resultOfNewChannel) => {
-                                        cassandraclient.execute("UPDATE texter.channelcount SET channelcount = channelcount + 1 WHERE campaignid = ?;", [req.body.campaignid], { prepare: true })
-                                        .catch(async (stupidchannelerror) => {logger.error(stupidchannelerror)})
-                                    })
-                                    .catch((error) => {
-                                        console.log(error)
-                                        logger.error({ type: "cassandraerror" }, error)
-                                    })
-                            } else {
-                                //update the channel with the latest msg content
-                                channelidToInsertMsg = resultFromChannelSearch.rows[0].channelid
-                        }
-                        })
 
                         ///// INSERT TWILIO MSG INTO CASSANDRA
 
@@ -440,7 +614,15 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
                         logger.info({ type: "resultofmessageinsert", cassandra: resultOfMessageInsert })
                       console.log(resultOfMessageInsert)
                       console.log('sending it back to client')
-                        res.end({ "success": true })
+
+                      cassandraclient.execute("SELECT * FROM texter.messages WHERE channelid = ? AND bucket = ? and snowflake = ?", [channelidToInsertMsg, bucket, currentSnowflake], {prepare: true}).then((
+                         resultOfMessageCheck
+                  ) => {
+                        console.log(resultOfMessageCheck)
+                        console.log(resultOfMessageCheck.rows)
+                       })
+
+                      res.end({ "success": true })
                     }).catch((error) => {
                         logger.info({ type: "errormessageinsert", error })
                         console.log(error)
@@ -465,13 +647,7 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
                   
 
 
-                })
-                  .catch((error) => {
-                  console.log(error)
-                  return res.type('text/plain')
-                .status(500)
-                .send('Query for Channel failed');
-              })
+              
                 }
 
               
@@ -507,48 +683,78 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
 app.all('/mycampaigns', [cors(),cookieParser(),express.json()],async (req, res) => {
   //const sessionCookie = req.cookies.session || "";
   //console.log(sessionCookie)
-    admin
-    .auth()
-    .verifyIdToken(req.body.firebaseToken)
+  withCacheVerifyIdToken(req.body.firebaseToken)
       .then(async (decodedIdToken) => {
      //   console.log(decodedIdToken)
         // look up memberships
 
-        const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ?'
-        const paramsformycampaigns = [decodedIdToken.uid]
+        var userEmail = decodedIdToken.email;
 
-         var membershipsforuid = await cassandraclient.execute(queryformycampaigns, paramsformycampaigns)
+        const queryForInvites = 'SELECT * FROM texter.invitations WHERE email = ?'
+        const paramsForInvites = [userEmail]
 
-        var listOfPromises = membershipsforuid.rows.map(eachRow => {
-          return new Promise((resolve, reject) => {
-            cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ? ", [eachRow.campaignid])
-              .then((result) => {
-              resolve({
-                campaignid: eachRow.campaignid,
-                nameOfCampaign: result.rows[0].name,
-                iconurl: result.rows[0].iconurl,
-                bannerurl: result.rows[0].bannerurl
-              })
-              })
-              .catch((error) => {
-                console.log(error)
-              reject("error")
+        await cassandraclient.execute(queryForInvites, paramsForInvites, { params: true })
+          .then(async (resultsOfInvites) => {
+
+            await resultsOfInvites.rows.forEach(async (eachInviteRow) => {
+              await cassandraclient.execute("INSERT INTO texter.memberships (campaignid, userid, joinedtime, isowner, isadmin, isvolunteer) VALUES (?, ?, ?, ?, ?, ?) IF NOT EXISTS; ",
+                [
+                  eachInviteRow.campaignid,
+                  decodedIdToken.uid,
+                  TimeUuid.now(),
+                  false,
+                  eachInviteRow.isadmin,
+                  true
+                ], { prepare: true })
+                .then(async (resultOfMembershipInsert) => {
+                  await cassandraclient.execute("DELETE FROM texter.invitations WHERE campaignid = ? AND email = ?", [eachInviteRow.campaignid, eachInviteRow.email], { prepare: true })
+                    .then((resultOfInvitationRemovalAfter) => {
+                    console.log('invitations deleted afterwards')
+                  }).catch((error) => {console.log(error)})
+                })
+              .catch(error => {console.log(error)})
+
+              
             })
-          })
+
+            const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ?'
+            const paramsformycampaigns = [decodedIdToken.uid]
+    
+             var membershipsforuid = await cassandraclient.execute(queryformycampaigns, paramsformycampaigns)
+    
+            var listOfPromises = membershipsforuid.rows.map(eachRow => {
+              return new Promise((resolve, reject) => {
+                cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ? ", [eachRow.campaignid])
+                  .then((result) => {
+                  resolve({
+                    campaignid: eachRow.campaignid,
+                    nameOfCampaign: result.rows[0].name,
+                    iconurl: result.rows[0].iconurl,
+                    bannerurl: result.rows[0].bannerurl
+                  })
+                  })
+                  .catch((error) => {
+                    console.log(error)
+                  reject("error")
+                })
+              })
+            })
+    
+            var arrayOfPromisesResult:any = await Promise.allSettled(listOfPromises)
+              
+            var arrayOfCleanedPromiseResults = arrayOfPromisesResult.filter(function(campaignObj) {
+              if (campaignObj.status != "fulfilled") {
+                return false; // skip
+              }
+              return true;
+            }).map(function(campaignObj) { return campaignObj.value; });
+            
+            return res.json({
+              "campaignlist": arrayOfCleanedPromiseResults
+            })
         })
 
-        var arrayOfPromisesResult:any = await Promise.allSettled(listOfPromises)
-          
-        var arrayOfCleanedPromiseResults = arrayOfPromisesResult.filter(function(campaignObj) {
-          if (campaignObj.status != "fulfilled") {
-            return false; // skip
-          }
-          return true;
-        }).map(function(campaignObj) { return campaignObj.value; });
         
-        return res.json({
-          "campaignlist": arrayOfCleanedPromiseResults
-        })
 
     })
     .catch((error) => {
