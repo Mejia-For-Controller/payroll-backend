@@ -397,7 +397,7 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                     channelid: eachRow.channelid,
                     timestamp: eachRow.timestamp.getDate().getTime(),
                     twilionumber: eachRow.twilionumber,
-                    type: eachRow.text,
+                    type: eachRow.type,
                     body: eachRow.body,
                     fromtwilio: eachRow.fromtwilio,
                     totwilio: eachRow.totwilio
@@ -408,7 +408,7 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                   channelid: eachRow.channelid,
                   timestamp: eachRow.timestamp.getDate().getTime(),
                   twilionumber: eachRow.twilionumber,
-                  type: eachRow.text,
+                  type: eachRow.type,
                   body: eachRow.body,
                   fromtwilio: eachRow.fromtwilio,
                   totwilio: eachRow.totwilio
