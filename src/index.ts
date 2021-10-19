@@ -99,6 +99,30 @@ app.get('/robots.txt', function (req, res) {
   res.send("User-agent: *\nDisallow: /");
 });
 
+app.all('/campaignname', [cors(), cookieParser(), express.json()], function (req, res) {
+  withCacheVerifyIdToken(req.body.firebaseToken)
+    .then(async (decodedIdToken) => {
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+          await cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ?", [req.body.campaignid]).then((resultOfCampaign) => {
+            if (resultOfCampaign.rows.length > 0) {
+              res.send({
+                name: `${resultOfCampaign.rows[0].name}`
+              })
+            } else {
+              res.send({
+                name: `null`
+              })
+            }
+          })
+        }
+      });
+    })
+});
+
 app.all('/getmembershiproster', [cors(), cookieParser(), express.json()], function (req, res) {
   withCacheVerifyIdToken(req.body.firebaseToken)
     .then(async (decodedIdToken) => {
