@@ -104,6 +104,16 @@ export async function createDatabases() {
       //    console.log(result)
     })
     .catch((error) => console.error(error));
+  
+    await cassandraclient
+    .execute(
+      "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, read boolean, channelid text)"
+    )
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
 
   //Goes inside adorastats keyspace, makes the table "ytvideostats"
   /*

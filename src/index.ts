@@ -16,6 +16,7 @@ import axios from 'axios'
 import qs from 'qs';
 import { bucketCalc } from './utils';
 import { myCache } from './cache';
+import { deleteOldEventsForCampaign } from './deleteOldChannelEvents';
 const Long = require('cassandra-driver').types.Long;
 var rangeInclusive = require('range-inclusive')
 
@@ -34,7 +35,7 @@ function withCacheVerifyIdToken(firebaseToken) {
   return new Promise<admin.auth.DecodedIdToken>((resolve, reject) => {
     if (cacheOfSecureTokens[firebaseToken]) {
       resolve(cacheOfSecureTokens[firebaseToken])
-    uploadUserDetailsFromDecodedIdToken(cacheOfSecureTokens[firebaseToken])
+   // uploadUserDetailsFromDecodedIdToken(cacheOfSecureTokens[firebaseToken])
     } else {
       admin
         .auth()
@@ -400,7 +401,8 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                     type: eachRow.type,
                     body: eachRow.body,
                     fromtwilio: eachRow.fromtwilio,
-                    totwilio: eachRow.totwilio
+                    totwilio: eachRow.totwilio,
+                    hasmedia: eachRow.hasmedia
                   })
                   }
               } else {
@@ -411,13 +413,24 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                   type: eachRow.type,
                   body: eachRow.body,
                   fromtwilio: eachRow.fromtwilio,
-                  totwilio: eachRow.totwilio
+                  totwilio: eachRow.totwilio,
+                  hasmedia: eachRow.hasmedia
                 })
              }
             })
-            return res.json({
+            res.json({
               events: eventsArray
             })
+
+            //delete old events for campaign
+            try {
+              deleteOldEventsForCampaign(req.body.campaignid)
+            }
+            catch (error) {
+              console.log(error)
+            }
+
+            return true;
           })
           .catch((error) => {
             console.log(error)
@@ -622,7 +635,7 @@ app.all('/submitmessage', [cors(), express.json()], (req, res) => {
                     response.data.sid,
                     response.data.from,
                     response.data.to,
-                    "outbound",
+                    decodedIdToken.uid,
                     response.data.body,
                     response.data.status,
                     false,
@@ -1076,4 +1089,4 @@ app.all('/editcampaignsettings', [cors(),cookieParser(),express.json()], (req, r
 // start the Express server
 app.listen( port, () => {
     console.log( `server started at http://localhost:${port}` );
-} );
+});
