@@ -10,7 +10,7 @@
     "start": "node .",
     "fullsync": "npm run build && npm run kylersync",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "kylersync": " rsync -av --progress -e \"ssh -i /home/kyler/KylersMejiaCampaignKeyPair.pem\" $(pwd)/dist ubuntu@api.text.mejiaforcontroller.com:/home/ubuntu/texting-backend"
+    "kylersync": " rsync -av --progress -e \"ssh -i /home/kyler/.ssh/id_rsa\" $(pwd)/dist ubuntu@api.text.mejiaforcontroller.com:/home/ubuntu/texting-backend"
   },
   "author": "",
   "license": "ISC",

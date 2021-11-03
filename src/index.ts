@@ -17,40 +17,9 @@ import qs from 'qs';
 import { bucketCalc } from './utils';
 import { myCache } from './cache';
 import { deleteOldEventsForCampaign } from './deleteOldChannelEvents';
+import {cacheOfSecureTokens,uploadUserDetailsFromDecodedIdToken,withCacheVerifyIdToken} from './cacheIdTokens'
 const Long = require('cassandra-driver').types.Long;
 var rangeInclusive = require('range-inclusive')
-
-var cacheOfSecureTokens = {
-}
-
-function uploadUserDetailsFromDecodedIdToken(decodedIdToken) {
-  cassandraclient.execute("INSERT INTO texter.userinfo (uid, email, name, picture) VALUES (?,?,?,?)",
-  [decodedIdToken.uid, decodedIdToken.email, decodedIdToken.name, decodedIdToken.picture],
-{prepare: true})
-  .then((resultofuserupdate) => console.log(resultofuserupdate))
-.catch((error) => {console.log(error)})
-}
-
-function withCacheVerifyIdToken(firebaseToken) {
-  return new Promise<admin.auth.DecodedIdToken>((resolve, reject) => {
-    if (cacheOfSecureTokens[firebaseToken]) {
-      resolve(cacheOfSecureTokens[firebaseToken])
-   // uploadUserDetailsFromDecodedIdToken(cacheOfSecureTokens[firebaseToken])
-    } else {
-      admin
-        .auth()
-        .verifyIdToken(firebaseToken)
-        .then(async (decodedIdToken) => {
-          resolve(decodedIdToken)
-          cacheOfSecureTokens[firebaseToken] = decodedIdToken;
-          uploadUserDetailsFromDecodedIdToken(decodedIdToken)
-        })
-        .catch((error) => {
-          reject(error)
-        })
-    }
-  })
-}
 
 
 createDatabases()
