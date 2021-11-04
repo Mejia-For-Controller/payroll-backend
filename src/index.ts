@@ -24,10 +24,6 @@ var rangeInclusive = require('range-inclusive')
 
 createDatabases()
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
 app.use(cors())
 app.use('/twilio', twiliorouter);
 app.use(express.urlencoded())

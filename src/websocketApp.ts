@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 var forEach = require("for-each")
+import _ from 'lodash';
 var r = require('rethinkdbdash')({
   db: 'texterpresence',
   cursor: true
@@ -86,9 +87,17 @@ campaign.on('connection', async (socket) => {
     if (socket.handshake.query) {
       if (socket.handshake.query.campaignid) {
         try {
-          await r.db('texterpresence').tableCreate(socket.handshake.query.campaignid).run();
+          r.db('texterpresence').tableList().run().then(function(tableNames) {
+            //console.log(tableNames)
+            if (_.includes(tableNames._data[0], socket.handshake.query.campaignid)) {
+              return;
+            } else {
+              return r.db('texterpresence').tableCreate(socket.handshake.query.campaignid).run().catch((error) => {
+                console.log(error)
+              });
+              }
+            })
         } catch (err) {
-
         }
         console.log('table changes')
         console.log('campaingid:', socket.handshake.query.campaignid)
@@ -97,17 +106,23 @@ campaign.on('connection', async (socket) => {
           squash: true,
           includeTypes: true
         }).run(function (err: any, cursor: any) {
-          cursor.toArray().then(function (result) {
-            console.log('result', result);
-          });
-          console.log('cursor', cursor)
-          cursor.each(function (err, row) {
-            console.log(row)
-
-            var rowToSend = row;
-
-            socket.emit("presenceDownloadv1", rowToSend);
-          });
+          if (!err) {
+            console.log('cursor', cursor)
+            cursor.each(function (err, row) {
+            //  console.log(row)
+  
+              var rowToSend = row;
+  
+  
+              //later, optimize this by preventing "aloners" and removing viewers that are the uid
+              if (row.new_val) {
+                socket.emit("presenceDownloadv1", rowToSend);
+              }
+            });
+          } else {
+            console.error(err)
+          }
+         
         });
 
 
@@ -118,7 +133,7 @@ campaign.on('connection', async (socket) => {
             var decodedIdToken = await withCacheVerifyIdToken(data.idToken)
 
             r.db('texterpresence').table(data.campaignid).get(data.removeView.twilionumber).run(function (err, result) {
-              console.log(result)
+            //  console.log(result)
 
               if (result) {
                 var viewingUpdated;
@@ -134,7 +149,7 @@ campaign.on('connection', async (socket) => {
 
                       forEach(value.tabs, function (valueTab, keyTab) {
                         //if it's not the tab to delete AND the value isn't older than 20 seconds
-                        if (keyTab != data.tabId && valueTab > Date.now() - 30000) {
+                        if (keyTab != data.tabId && valueTab > Date.now() - 20000) {
                           //add it to the newViewingForUser
                           newViewingForUserTabs[keyTab] = valueTab;
                         }
@@ -156,6 +171,9 @@ campaign.on('connection', async (socket) => {
                         viewing: r.literal(viewingUpdated)
                       }
                     )
+                    .then(function (deletingOldTabsResult) {
+                   //   console.log(deletingOldTabsResult)
+                    })
                 }
               }
 
@@ -185,9 +203,16 @@ campaign.on('connection', async (socket) => {
 
               tabs[data.tabId] = data.addView.time
 
+              var decodedIdTokenSelective = {
+                name: decodedIdToken.name,
+                uid:  decodedIdToken.uid,
+                email: decodedIdToken.email,
+                picture: decodedIdToken.picture
+              }
+
               updateDoc.viewing[decodedIdToken.uid] = {
                 tabs,
-                ...decodedIdToken
+                ...decodedIdTokenSelective
               }
 
 
