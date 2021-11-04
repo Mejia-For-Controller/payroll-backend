@@ -1,6 +1,14 @@
 import * as admin from 'firebase-admin';
 import { cassandraclient } from './cassandra'
 
+
+const serviceAccount = require("./../serviceAccountKey.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 export var cacheOfSecureTokens = {
 }
 
