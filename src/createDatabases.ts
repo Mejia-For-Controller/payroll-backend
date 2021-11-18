@@ -15,7 +15,7 @@ export async function createDatabases() {
   //Goes inside adora moderation keyspace, makes the table "trackedytvideoids"
   await cassandraclient
     .execute(
-      "CREATE TABLE IF NOT EXISTS texter.campaigns (campaignid text PRIMARY KEY, about text, website text, name text, ownerid text, iconurl text, bannerurl text, creationtime timeuuid, accountsid text, authtoken text, messagingservicesid text);"
+      "CREATE TABLE IF NOT EXISTS texter.campaigns (campaignid text PRIMARY KEY, about text, website text, name text, ownerid text, iconurl text, bannerurl text, creationtime timeuuid, accountsid text, authtoken text, messagingservicesid text, pdiusername text, pdipassword text);"
     )
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
@@ -108,6 +108,18 @@ export async function createDatabases() {
     await cassandraclient
     .execute(
       "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, read boolean, channelid text)"
+    )
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+        await cassandraclient
+    .execute(
+      "CREATE TABLE IF NOT EXISTS texter.voterfile " +
+      "(campaignid text, firstfour text, voterid text, firstname text, middlename text, lastname text, precinct text, party text, regdate text, phonenumber text, pav boolean, birthplace text, birthdate text, mailstreet text, mailcity text, mailstate text, mailzip text, mailcountry text, ltd text, language text, email text, regdateoriginal text, ethnicity text, " +
+      "PRIMARY KEY ((campaignid, firstfour), phonenumber))"
     )
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })

@@ -2,6 +2,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { cassandraclient } from './cassandra'
 var forEach = require("for-each")
 import _ from 'lodash';
 var r = require('rethinkdbdash')({
@@ -34,8 +35,18 @@ const campaign = io.of(/^\/campaign\/\w+$/).use(async (socket, next) => {
 
   // if so, next
 
-  await withCacheVerifyIdToken(socket.handshake.query.token).then((info) => {
-    next()
+  await withCacheVerifyIdToken(socket.handshake.query.token).then(async (decodedIdToken) => {
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, socket.handshake.query.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns)
+      .then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+              next()
+        } else {
+                  next(new Error('forbidden'))
+        }
+      })
   })
     .catch((error) => {
       next(new Error('forbidden'))

@@ -245,10 +245,29 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
        
               var rangeOfBuckets = rangeInclusive(0, bucketCalc(Date.now(), channeltimestamp), 1);
 
-              const queryForTextsInThisBucket = "SELECT * FROM texter.messages WHERE channelid = ? and bucket = ?"
+              var queryForTextsInThisBucket;
+              
+              if (req.body.onlylatest) {
+                queryForTextsInThisBucket = "SELECT * FROM texter.messages WHERE channelid = ? and bucket = ? and snowflake > ?"
+              } else {
+                queryForTextsInThisBucket = "SELECT * FROM texter.messages WHERE channelid = ? and bucket = ?"
+              }
+
+              
 
               var promisesForAllBuckets = rangeOfBuckets.map((itemBucket, indexBucket) =>
-                cassandraclient.execute(queryForTextsInThisBucket, [channelresult.rows[0].channelid, itemBucket], { prepare: true }))
+           {  
+              var paramsForThisBucket = [channelresult.rows[0].channelid, itemBucket]
+
+              if (req.body.onlylatest) {
+                 paramsForThisBucket.push(TimeUuid.min(new Date(Date.now() - 3600000)))
+              }
+
+            //  console.log('query: ', queryForTextsInThisBucket)
+              // console.log('params: ', paramsForThisBucket)
+
+              return  cassandraclient.execute(queryForTextsInThisBucket,  paramsForThisBucket, { prepare: true })
+           })
               
               Promise.all(promisesForAllBuckets).then((values) => {
               //  console.log(values);
@@ -827,7 +846,9 @@ app.all('/campaignsettings', [cors(),cookieParser(),express.json()], (req, res) 
                     accountsid: result.rows[0].accountsid,
                    // authtoken: result.rows[0].authtoken,
                     authtoken: fakeAuthTokenPlaceholder,
-                    messagingservice: result.rows[0].messagingservicesid
+                    messagingservice: result.rows[0].messagingservicesid,
+                    pdiusername: result.rows[0].pdiusername,
+                    pdipassword: result.rows[0].pdipassword
                   }
                 }));
                 } else {
