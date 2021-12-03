@@ -1,3 +1,6 @@
+import axios from 'axios'
+import qs from 'qs'
+
 function getPdiInfo(tendigitphone) {
     return new Promise((resolve, reject) => {
         var data = qs.stringify({
@@ -8,7 +11,7 @@ function getPdiInfo(tendigitphone) {
             'TimeZoneOffset': '0',
             'ReturnUrl': '/Lookup' 
           });
-          var config = {
+          var config: any = {
             method: 'post',
             url: 'https://www.onlinecampaigntools.com/PDI',
             headers: { 

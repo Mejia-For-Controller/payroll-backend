@@ -17,9 +17,16 @@ import qs from 'qs';
 import { bucketCalc } from './utils';
 import { myCache } from './cache';
 import { deleteOldEventsForCampaign } from './deleteOldChannelEvents';
-import {cacheOfSecureTokens,uploadUserDetailsFromDecodedIdToken,withCacheVerifyIdToken} from './cacheIdTokens'
+import {uploadfiles} from './routes/uploadfiles';
+import {cacheOfSecureTokens,uploadUserDetailsFromDecodedIdToken,withCacheVerifyIdToken} from './cacheIdTokens';
+import * as Papa from 'papaparse';
 const Long = require('cassandra-driver').types.Long;
 var rangeInclusive = require('range-inclusive')
+var busboy = require('connect-busboy');
+var http = require('http'),
+    path = require('path'),
+    os = require('os'),
+    fs = require('fs');
 
 
 createDatabases()
@@ -36,11 +43,146 @@ const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 
+
 // define a route handler for the default home page
 app.all("/", cors(), (req, res) => {
    // console.log(req)
     res.send( "Hello world!" );
 });
+
+app.all('/getheadersoffile/:campaignid/:firebasetoken/:filegenname', cors({
+  "origin": "*"
+}), async (req:any, res:any) => {
+  withCacheVerifyIdToken( req.params.firebasetoken)
+  .then(async (decodedIdToken) => {
+
+    fs.readFile( path.join(`${__dirname}/../filestorage/`, path.basename(req.params.filegenname)), 'utf8' , (err, data) => {
+      if (err) {
+        console.error(err)
+        return
+      } else {
+        console.log(data)
+
+        //remove blank lines
+        var cleanedupdata = data.replace(/^\s*$(?:\r\n?|\n)/gm,"")
+        var paparesult = Papa.parse(cleanedupdata, {
+          header: true
+        })
+
+        console.log(paparesult)
+        logger.info(paparesult, {type: 'paparesult'})
+      }
+      
+    })
+
+    res.send({
+      success:true
+    })
+
+
+
+ 
+  })
+  .catch(error => undefined)
+})
+
+function generateRandomFileName() {
+  return TimeUuid.now()
+}
+
+app.all('/getcurrentfiles/:campaignid/:firebasetoken', cors({
+  "origin": "*"
+}), (req:any, res:any) => {
+  withCacheVerifyIdToken( req.params.firebasetoken)
+  .then(async (decodedIdToken) => {
+    const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+    const paramsformycampaigns = [decodedIdToken.uid,  req.params.campaignid]
+
+    cassandraclient.execute(queryformycampaigns,paramsformycampaigns, {prepare: true})
+    .then(async (membershipresult:any) => {
+      if (membershipresult.rows.length > 0) {
+        cassandraclient.execute("SELECT * FROM texter.filesuploaded WHERE campaignid = ?",[req.params.campaignid])
+        .then((cassandraresultsfilesuploaded) => {
+          var arrayOfFiles = cassandraresultsfilesuploaded.rows.map((eachRow) => {
+            return {
+              filename: eachRow.filename,
+              encoding: eachRow.encoding,
+              mimetype: eachRow.mimetype,
+              genfilename: eachRow.genfilename
+            }
+          })
+
+          res.send({
+            success: true,
+            arrayOfFiles: arrayOfFiles
+          })
+        }) 
+      } else {
+        res.send({
+          success: false
+        })
+      }
+    })
+  })
+})
+
+app.all('/uploadfiles/:campaignid/:firebasetoken', cors({
+  "origin": "*"
+}), busboy({
+  highWaterMark: 1024 * 1024 * 1024,
+  limits: {
+    fileSize: 1024 * 1024 * 1024
+  }
+}), (req:any, res:any) => {
+
+  //pipestuff
+
+    //console.log(` request object is ${req}, response object is ${res} `);
+ // uploadfiles(req,res)
+ req.busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+  // ...
+  var thisFileName = generateRandomFileName();
+  var saveTo = path.join(`${__dirname}/../filestorage/`, path.basename(thisFileName.toString()))
+  file.pipe(fs.createWriteStream(saveTo));
+  cassandraclient.execute("INSERT INTO texter.filesuploaded (campaignid, filename, genfilename, encoding, mimetype) VALUES (?,?,?,?,?)",
+  [
+    req.params.campaignid,
+    filename,
+    thisFileName,
+    encoding,
+    mimetype
+  ])
+  .then((result) => {
+
+  })
+  .catch((errorOfFileUpload) => {
+    console.error(errorOfFileUpload)
+  })
+});
+req.busboy.on('field', function(key, value, keyTruncated, valueTruncated) {
+  // ...
+});
+  withCacheVerifyIdToken( req.params.firebasetoken)
+  .then(async (decodedIdToken) => {
+    const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+    const paramsformycampaigns = [decodedIdToken.uid,  req.params.campaignid]
+
+    cassandraclient.execute(queryformycampaigns,paramsformycampaigns, {prepare: true})
+    .then(async (membershipresult:any) => {
+      if (membershipresult.rows.length > 0) {
+        //valid membership!
+        req.pipe(req.busboy);
+      }
+    }).catch((nomembership) => {
+      console.error(nomembership)
+    })
+  })
+  .catch((error) => {
+    console.error(error)
+  });
+
+
+})
 
 function purifyHtml(input) {
   return DOMPurify.sanitize(input, {USE_PROFILES: {html: false}});
@@ -55,6 +197,7 @@ app.all('/securetokens', (req, res) => {
   console.log(cacheOfSecureTokens)
   res.end('success')
 })
+
 
 app.all('/clean', [cors(),express.json()], (req, res) => {
   res.send(purifyHtml(req.body.text))
@@ -1023,7 +1166,7 @@ app.all('/editcampaignsettings', [cors(),cookieParser(),express.json()], (req, r
                   authTokenToWrite = req.body.creationOptions.twilio.authtoken
                 }
 
-                const editCampaignQuery = "INSERT INTO texter.campaigns (campaignid, name, about, website, ownerid, iconURL, bannerURL, creationtime, accountsid, authtoken, messagingservicesid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); "
+                const editCampaignQuery = "INSERT INTO texter.campaigns (campaignid, name, about, website, ownerid, iconURL, bannerURL, creationtime, accountsid, authtoken, messagingservicesid, pdiusername, pdipassword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); "
                 const editCampaignParams = [req.body.creationOptions.campaignid,
                   req.body.creationOptions.name,
                   req.body.creationOptions.about,
@@ -1035,7 +1178,9 @@ app.all('/editcampaignsettings', [cors(),cookieParser(),express.json()], (req, r
                   req.body.creationOptions.twilio.accountsid,
                  // req.body.creationOptions.twilio.authtoken,
                   authTokenToWrite,
-                  req.body.creationOptions.twilio.messagingservicesid]
+                  req.body.creationOptions.twilio.messagingservicesid,
+                  req.body.creationOptions.pdiusername,
+                  req.body.creationOptions.pdipassword]
                 cassandraclient.execute(editCampaignQuery, editCampaignParams)
                   .then(async result => {
                   console.log(result)

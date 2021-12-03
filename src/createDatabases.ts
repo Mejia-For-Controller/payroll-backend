@@ -23,6 +23,30 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.phonenumberslist (listid timeuuid, phonenumber text, firstname text)')
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //      console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.listindex (campaignid text, listid timeuuid, name text, fileoriginid timeuuid)')
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //      console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute(
+      "CREATE TABLE IF NOT EXISTS texter.filesuploaded (campaignid text, filename text, genfilename timeuuid, encoding text, mimetype text, PRIMARY KEY (campaignid, genfilename));"
+    )
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //      console.log(result)
+    })
+    .catch((error) => console.error(error));
+
   await cassandraclient.execute(
     "CREATE TABLE IF NOT EXISTS texter.channelcount ( campaignid text PRIMARY KEY, channelcount counter);"
   );
@@ -107,7 +131,7 @@ export async function createDatabases() {
   
     await cassandraclient
     .execute(
-      "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, read boolean, channelid text)"
+      "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, read boolean, channelid text, PRIMARY KEY (channelid, snowflake))"
     )
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
