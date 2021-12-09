@@ -12,6 +12,11 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
+    await cassandraclient
+    .execute(
+      "CREATE TABLE IF NOT EXISTS texter.blastindex (campaignid text, blastid timeuuid, name text, senderuid text, smscontent text, PRIMARY KEY (campaignid, blastid))"
+    )
+
   //Goes inside adora moderation keyspace, makes the table "trackedytvideoids"
   await cassandraclient
     .execute(
@@ -23,14 +28,14 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
-    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.phonenumberslist (listid timeuuid, phonenumber text, firstname text)')
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.phonenumberslist (listid timeuuid, phonenumber text, firstname text, PRIMARY KEY (listid, phonenumber))')
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //      console.log(result)
     })
     .catch((error) => console.error(error));
 
-    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.listindex (campaignid text, listid timeuuid, name text, fileoriginid timeuuid)')
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.listindex (campaignid text, listid timeuuid, name text, fileoriginid timeuuid, PRIMARY KEY (campaignid, listid))')
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //      console.log(result)
