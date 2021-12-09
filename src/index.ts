@@ -223,7 +223,7 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
                   Long.fromNumber(actualTimestamp),
                   false,
                   true,
-                  "",
+                  req.body.idempotence,
                   bucket,
                   req.body.campaignid,
                   channelidToInsertMsg,
