@@ -22,6 +22,7 @@ import {cacheOfSecureTokens,uploadUserDetailsFromDecodedIdToken,withCacheVerifyI
 import * as Papa from 'papaparse';
 import { forEachChild } from 'typescript';
 import parsePhoneNumber from 'libphonenumber-js'
+import {generateIdempotency} from './idempotency'
 const Long = require('cassandra-driver').types.Long;
 var rangeInclusive = require('range-inclusive')
 var busboy = require('connect-busboy');
@@ -86,6 +87,21 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
               req.body.blasttext
             ])
 
+            if (req.body.blastmediaurl) {
+              //get content header
+
+              var axiosheaderresult;
+              
+              await axios.get(req.body.blastmediaurl)
+              .then((mediaurlresponse) => {
+                axiosheaderresult = mediaurlresponse.headers['content-type']
+                logger.info( axiosheaderresult, {type: 'axiosheaderresult'})
+              })
+              .catch((error) => {
+                logger.error(error, {type: "mediaurlerrorfailed"})
+              })
+            }
+
             const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?"
 
             cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])
@@ -127,6 +143,8 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
 
                   //send to twilio
 
+                
+
                   var headers: any = { 'content-type': 'application/x-www-form-urlencoded' }
                   const regexValidSid = new RegExp('^[a-zA-Z0-9]+$');
 
@@ -136,11 +154,15 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
 
                     //POST https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/Messages.json
 
-                    const data = {
+                    var data:any = {
                       'From': campaignresult.messagingservicesid,
                       'To': eachPhoneNumberRow.phonenumber,
                       'Body': textmsgtosend
                     };
+
+                    if (req.body.blastmediaurl.length > 0) {
+                      data["MediaUrl"] = req.body.blastmediaurl;
+                    }
 
                     var urlSendMsgTwilio = `https://api.twilio.com/2010-04-01/Accounts/${campaignresult.accountsid}/Messages.json`
                     
@@ -172,7 +194,7 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
                           })
 
     
-                      try { logger.info({ type: 'instantresponsetwilio', responsedata: response.data }) }
+                     try { logger.info({ type: 'instantresponsetwilioblast', responsedata: response.data }) }
                       catch (error) {console.log(error)}
 
                       ///// INSERT TWILIO MSG INTO CASSANDRA
@@ -206,12 +228,12 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
 
                   var insertionsOfMediaCompleted = 0;
                   //convert twilio's stupid schema into cassandra compatible 2 lists
-                  while (insertionsOfMediaCompleted < totalCountOfMedia) {
-                      mediaurl.push(req.body[`MediaUrl${insertionsOfMediaCompleted}`])
-                      mediatype.push(req.body[`MediaContentType${insertionsOfMediaCompleted}`])
-                      insertionsOfMediaCompleted = insertionsOfMediaCompleted + 1;
-                  }
 
+                  if (req.body.blastmediaurl) {
+                    mediaurl.push(req.body.blastmediaurl)
+                    mediatype.push(axiosheaderresult)
+                  }
+                     
                       var objectOfHistory = {
                         
                       }
@@ -223,7 +245,7 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
                   Long.fromNumber(actualTimestamp),
                   false,
                   true,
-                  req.body.idempotence,
+                  generateIdempotency(),
                   bucket,
                   req.body.campaignid,
                   channelidToInsertMsg,
@@ -407,13 +429,15 @@ app.all('/createlist',[ cors({
      
 
             // then add to list index
-           await cassandraclient.execute("INSERT INTO texter.listindex (campaignid, listid, name, fileoriginid) VALUES (?,?,?,?)",
+           await cassandraclient.execute("INSERT INTO texter.listindex (campaignid, listid, name, fileoriginid, rowcount) VALUES (?,?,?,?,?)",
             [
               req.body.campaignid,
               assignedListId,
               listnickname,
-              fileidtimeuuid
-            ])
+              fileidtimeuuid,
+              paparesult.data.length
+            ],
+            {prepare: true})
             .catch((error) => {
               logger.error(error, {type: "cassandraerrorcreatelistindex"})
             })
@@ -460,9 +484,12 @@ app.all('/getheadersoffile/:campaignid/:firebasetoken/:filegenname', cors({
             console.log(paparesult)
             logger.info(paparesult, {type: 'paparesult'})
     
+            var lengthOfList = paparesult.data.length;
+
             res.send({
               success:true,
-              meta: paparesult.meta
+              meta: paparesult.meta,
+              lengthdata: lengthOfList
             })
           }
           

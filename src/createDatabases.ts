@@ -35,7 +35,7 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
-    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.listindex (campaignid text, listid timeuuid, name text, fileoriginid timeuuid, PRIMARY KEY (campaignid, listid))')
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.listindex (campaignid text, listid timeuuid, name text, fileoriginid timeuuid, rowcount bigint, PRIMARY KEY (campaignid, listid))')
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //      console.log(result)
