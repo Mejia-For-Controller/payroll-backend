@@ -10,6 +10,7 @@ const serviceAccount = require("./../serviceAccountKey.json");
 import { createDatabases } from './createDatabases'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
+import {recountunreadmessages} from './recountListUnreadMessages'
 import { cassandraclient } from './cassandra'
 import {logger} from './logger'
 import axios from 'axios'
@@ -46,6 +47,72 @@ const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 
+function isThisUserTokenPartOfCampaign(token, campaignid) {
+  return new Promise((resolve, reject) => {
+    withCacheVerifyIdToken(token)
+    .then(async (decodedIdToken) => {
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid,  campaignid]
+  
+      cassandraclient.execute(queryformycampaigns,paramsformycampaigns, {prepare: true})
+      .then(async (membershipresult:any) => {
+        if (membershipresult.rows.length > 0) {
+          resolve({
+            decodedIdToken,
+            membershipresult
+          })
+        } else {
+          reject({
+            membershipresult,
+            decodedIdToken
+          })
+        }
+      })
+    })
+  });
+}
+
+app.all('/putreadmsgs', [cors(), express.json()], (req, res) => {
+  withCacheVerifyIdToken(req.body.firebasetoken)
+  .then(async (decodedIdToken) => {
+    const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+    const paramsformycampaigns = [decodedIdToken.uid,  req.body.campaignid]
+
+    cassandraclient.execute(queryformycampaigns,paramsformycampaigns, {prepare: true})
+    .then(async (membershipresult:any) => {
+      if (membershipresult.rows.length > 0) {
+      }
+    })
+  })
+});
+
+app.all('/getunreadmsgs', [cors(), express.json()], (req, res) => {
+  isThisUserTokenPartOfCampaign(req.body.firebasetoken, req.body.campaignid)
+  .then((resultsOfMembershipCheck) => {
+//successfully logged in
+if (req.body.global === true) {
+  cassandraclient.execute('SELECT * FROM texter.readmsgs WHERE campaignid = ?', [req.body.campaignid])
+  .then((readmsgsresults) => {
+    var rowsResults = readmsgsresults.rows;
+
+    res.send({
+      rows: rowsResults
+    });
+  })
+  .catch(readmsgserror => {
+    console.error(readmsgserror);
+    
+  });
+}
+
+  })
+  .catch((error) => {
+    console.error(error)
+  })
+
+       
+     
+});
 
 // define a route handler for the default home page
 app.all("/", cors(), (req, res) => {
@@ -102,7 +169,6 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
               })
             }
 
-            const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?"
 
             cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])
             .then(async (listnumberresults) => {
@@ -116,6 +182,7 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
 
                 var channelidToInsertMsg: any;
 
+                const queryForChannelsSearch = "SELECT * FROM texter.channels WHERE campaignid = ? AND twilionumber = ?";
                 await cassandraclient.execute(queryForChannelsSearch, paramsForChannelsSearch, { prepare: true })
                 .then(async (resultFromChannelSearch) => {
                     console.log("searched for channels")
@@ -124,7 +191,7 @@ app.all('/sendblast', [cors(),express.json()], (req,res) => {
                     var currentSnowflake = TimeUuid.now()
 
                     const createNewChannelQuery = "INSERT INTO texter.channels (channelid, campaignid, twilionumber, targeteverresponded) VALUES (?, ?, ?, ?)"
-                        const createNewChannelParams = [currentSnowflake, req.body.campaignid, req.body.twilionumber, false]
+                        const createNewChannelParams = [currentSnowflake, req.body.campaignid, eachPhoneNumberRow.phonenumber , false]
                         channelidToInsertMsg =currentSnowflake;
                         await cassandraclient.execute(createNewChannelQuery, createNewChannelParams, { prepare: true })
                             .then((resultOfNewChannel) => {
@@ -445,12 +512,17 @@ app.all('/createlist',[ cors({
             res.send({
               success:true
             })
+
+            //now recount the list census
+            recountunreadmessages(req.body.campaignid)
                   }
                  })
            
               }
             })  
         }
+
+
       
       }})
     });
@@ -869,9 +941,9 @@ app.all('/getmessagesfromnumber', [cors(), cookieParser(), express.json()], func
                     isautomated: eachRow.isAutomated,
                     inbound: eachRow.inbound,
                     outbound: eachRow.outbound,
-                    dateToUse: eachRow.snowflake.getDate().getTime(),
                     twilionumber: eachRow.twilionumber,
-                    media: mediaArray
+                    media: mediaArray,
+                    snowflake: eachRow.snowflake
                   }
                 })
 

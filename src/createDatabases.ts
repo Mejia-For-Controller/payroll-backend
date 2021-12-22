@@ -42,6 +42,24 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.numberofunreadchannelsineachlist (listid timeuuid PRIMARY KEY, campaignid text, unreadcount int)');
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.numberofunreadchannelsineachlist (campaignid);")
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.stopmessage (campaignid text, twilionumber text, stopid timeuuid, incomingstopmsgcontent text, incomingstopmsgsid text, incomingstopmsgtime timeuuid, PRIMARY KEY (campaignid, twilionumber))')
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //      console.log(result)
+    })
+    .catch((error) => console.error(error));
+
     await cassandraclient
     .execute(
       "CREATE TABLE IF NOT EXISTS texter.filesuploaded (campaignid text, filename text, genfilename timeuuid, encoding text, mimetype text, PRIMARY KEY (campaignid, genfilename));"
@@ -136,8 +154,40 @@ export async function createDatabases() {
   
     await cassandraclient
     .execute(
-      "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, read boolean, channelid text, PRIMARY KEY (channelid, snowflake))"
+      "CREATE TABLE IF NOT EXISTS texter.readmsgs (snowflake timeuuid, campaignid text, read boolean, channelid timeuuid, twilionumber text, msid text, PRIMARY KEY ((campaignid, channelid), snowflake))"
     )
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.readmsgs (twilionumber);")
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.readmsgs (read);")
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.readmsgs (msid);")
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.readmsgs (campaignid);")
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //    console.log(result)

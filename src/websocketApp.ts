@@ -62,7 +62,81 @@ const campaign = io.of(/^\/campaign\/\w+$/).use(async (socket, next) => {
 });
 
 
+// looks like /campaign/mejiaforcontroller
+const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, next) => {
+  // const user = await fetchUser(socket.handshake.query);
 
+  // console.log(socket.handshake.auth.firebasetoken)
+
+  console.log(socket.handshake.query)
+
+
+  //fetch cassandra database for the user id
+  //socket.handshake.query.uid
+
+  // is the user a volunteer
+
+  // if so, next
+
+  await withCacheVerifyIdToken(socket.handshake.query.token).then(async (decodedIdToken) => {
+      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
+      const paramsformycampaigns = [decodedIdToken.uid, socket.handshake.query.campaignid]
+
+      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns)
+      .then(async (membershipsforuid) => {
+        if (membershipsforuid.rows.length > 0) {
+              next()
+        } else {
+                  next(new Error('forbidden'))
+        }
+      })
+  })
+    .catch((error) => {
+      next(new Error('forbidden'))
+    })
+
+  // else throw error
+  //if (user.isAdmin) {
+  //socket.user = user;
+  //next();
+  //} else {
+  // next(new Error('forbidden'));
+  //}
+});
+
+campaignmainpage.on('connection', async (socket) => {
+
+  var lastsentlist = [];
+
+  const campaignid = socket.handshake.query.campaignid;
+
+  console.log('campaignid', campaignid)
+  
+  var initialDecodedIdToken = await withCacheVerifyIdToken(socket.handshake.query.token);
+
+  function sendTheList () {
+    cassandraclient.execute("SELECT * FROM texter.numberofunreadchannelsineachlist WHERE campaignid = ?", [campaignid])
+  .then((results) => {
+
+    if (lastsentlist != results.rows) {
+      var resultsToSendBack = {
+        campaignid: campaignid,
+        rows: results.rows
+      }
+
+    socket.emit("listoflists",resultsToSendBack);
+    }
+
+    lastsentlist = results.rows;
+  })
+  }
+
+  sendTheList();
+
+  setInterval(() => {
+    sendTheList
+  }, 1000)
+})
 
 //rethink io .changes()
 //emit to sockets in campaign room with table

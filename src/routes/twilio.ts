@@ -12,6 +12,7 @@ const Long = require('cassandra-driver').types.Long;
 import { bucketCalc } from '../utils'
 import { myCache } from './../cache';
 
+import {recountunreadmessages} from '../recountListUnreadMessages'
 
 var twilioFormat = function (req, res, next) {
     if (!req.header('X-Twilio-Signature')) {
@@ -27,9 +28,13 @@ twiliorouter.post('/voice', [twilioFormat, urlencoded({ extended: false })], (re
     // Twilio Voice URL - receives incoming calls from Twilio
     const response = new twilio.twiml.VoiceResponse();
   
-    response.say(
-      `Thanks for calling Mejia For Controller! Our volunteers are currently busy and will return your call shortly. Bye homie!`
-    );
+   // response.say(
+  //    `Thanks for calling Mejia For Controller! Our volunteers are currently busy. Please visit Mejia for controller dot com for more information or email kenneth @ mejia for controller dot com. Thank you and goodbye!`
+   // );
+
+    response.play({
+        loop: 1
+    }, 'https://mejiaforcontroller.com/wp-content/gallery/mejia-speech.mp3');
   
     res.set('Content-Type', 'text/xml');
     res.send(response.toString());
@@ -209,6 +214,33 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                             console.log(errorOfChannelUpdate)
                             logger.error({ type: "errorofchanneleventadd", error: errorOfChannelUpdate })
                     })
+
+                    
+                   try {
+                       //check if the phone number sent stop
+                    if (req.body.Body.trim().toLowerCase() === 'stop') {
+                        //opt out code
+                        logger.info({type: "detectedoptout", body: req.body.Body, from: req.body.From, to: req.body.To
+                    })
+                    }
+                   } catch (optoutdetectionerror) {
+                       console.error(optoutdetectionerror)
+                   }
+
+                   var queryToAddUnreadMessage = "INSERT INTO texter.readmsgs (snowflake, campaignid, read, channelid, twilionumber, msid) VALUES (?, ?, ?, ?, ?, ?)"
+                   var paramsToAddUnreadMessage = [snowflake, req.params.campaignid, false, channelidToInsertMsg, req.body.From, req.body.MessageSid]
+
+                   cassandraclient.execute(queryToAddUnreadMessage, paramsToAddUnreadMessage, {prepare: true})
+                   .then((resultReadEvent) => {
+                    logger.info({ type: "resultofreadeventadd", result: resultReadEvent })
+                   }).catch((errorOfReadEvent) => {
+                    logger.error({ type: "errorofreadeventadd", error: errorOfReadEvent })
+                   })
+
+                   try {recountunreadmessages( req.params.campaignid)}
+                   catch (unreadchannelserr) {
+                       console.log(unreadchannelserr)
+                   }
                 } else {
                     console.log("invalid account sid")
                     res.status(404).send("This campaign doesn't exist!")
