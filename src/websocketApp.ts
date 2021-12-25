@@ -9,9 +9,11 @@ var r = require('rethinkdbdash')({
   db: 'texterpresence',
   cursor: true
 });
+const TimeUuid = require('cassandra-driver').types.TimeUuid;
 import { cacheOfSecureTokens, uploadUserDetailsFromDecodedIdToken, withCacheVerifyIdToken } from './cacheIdTokens'
 import {recountunreadmessages} from './recountListUnreadMessages'
 import { AllTimePayload } from "twilio/lib/rest/api/v2010/account/usage/record/allTime";
+import { logger } from "./logger";
 const app = express(); 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -123,7 +125,12 @@ campaignmainpage.on('connection', async (socket) => {
 
   socket.on("getListChannels",async (message) => {
     if (message.listid) {
-      await cassandraclient.execute('SELECT * FROM texter.phonenumberslist WHERE listid = ?', 
+      await cassandraclient.execute("SELECT * FROM texter.listindex WHERE campaignid = ? AND listid = ?", [
+        campaignid, TimeUuid.fromString(message.listid)
+      ])
+      .then(async(listindexresults) => {
+        if (listindexresults.rows.length > 0) {
+          await cassandraclient.execute('SELECT * FROM texter.phonenumberslist WHERE listid = ?', 
       [message.listid])
       .then(async(resultOfNumbers:any) => {
       
@@ -164,6 +171,10 @@ campaignmainpage.on('connection', async (socket) => {
        })
        
       });
+        }
+      }).catch((errorlist) => {logger.error(errorlist)})
+
+      
     }
 
   })
