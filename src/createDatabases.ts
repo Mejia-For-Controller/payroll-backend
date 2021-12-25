@@ -42,7 +42,7 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
-    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.numberofunreadchannelsineachlist (listid timeuuid PRIMARY KEY, campaignid text, unreadcount int)');
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.numberofunreadchannelsineachlist (listid timeuuid PRIMARY KEY, campaignid text, name text, fileoriginid timeuuid, rowcount bigint, unreadcount int)');
 
     await cassandraclient
     .execute("CREATE INDEX IF NOT EXISTS ON texter.numberofunreadchannelsineachlist (campaignid);")
@@ -126,6 +126,14 @@ export async function createDatabases() {
     .execute(
       "CREATE TABLE IF NOT EXISTS texter.channelevents (usereversent boolean, campaignid text, channelid timeuuid, timestamp timeuuid, twilionumber text, fromtwilio text, totwilio text, campaignvolunteeruidassigned text, body text, type text, hasmedia boolean, read boolean, PRIMARY KEY(campaignid, timestamp)) WITH CLUSTERING ORDER BY (timestamp DESC) AND gc_grace_seconds = 3600; "
     )
+    .then(async (result) => {
+      // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+      //    console.log(result)
+    })
+    .catch((error) => console.error(error));
+
+    await cassandraclient
+    .execute("CREATE INDEX IF NOT EXISTS ON texter.channelevents (twilionumber);")
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //    console.log(result)

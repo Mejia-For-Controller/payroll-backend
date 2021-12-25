@@ -10,57 +10,15 @@ var r = require('rethinkdbdash')({
   cursor: true
 });
 import { cacheOfSecureTokens, uploadUserDetailsFromDecodedIdToken, withCacheVerifyIdToken } from './cacheIdTokens'
-
-const app = express();
+import {recountunreadmessages} from './recountListUnreadMessages'
+import { AllTimePayload } from "twilio/lib/rest/api/v2010/account/usage/record/allTime";
+const app = express(); 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: '*'
   }
 });
-
-// looks like /campaign/mejiaforcontroller
-const campaign = io.of(/^\/campaign\/\w+$/).use(async (socket, next) => {
-  // const user = await fetchUser(socket.handshake.query);
-
-  // console.log(socket.handshake.auth.firebasetoken)
-
-  console.log(socket.handshake.query)
-
-
-  //fetch cassandra database for the user id
-  //socket.handshake.query.uid
-
-  // is the user a volunteer
-
-  // if so, next
-
-  await withCacheVerifyIdToken(socket.handshake.query.token).then(async (decodedIdToken) => {
-      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
-      const paramsformycampaigns = [decodedIdToken.uid, socket.handshake.query.campaignid]
-
-      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns)
-      .then(async (membershipsforuid) => {
-        if (membershipsforuid.rows.length > 0) {
-              next()
-        } else {
-                  next(new Error('forbidden'))
-        }
-      })
-  })
-    .catch((error) => {
-      next(new Error('forbidden'))
-    })
-
-  // else throw error
-  //if (user.isAdmin) {
-  //socket.user = user;
-  //next();
-  //} else {
-  // next(new Error('forbidden'));
-  //}
-});
-
 
 // looks like /campaign/mejiaforcontroller
 const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, next) => {
@@ -77,8 +35,10 @@ const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, n
   // is the user a volunteer
 
   // if so, next
+  console.log('token', socket.handshake.query.token)
 
-  await withCacheVerifyIdToken(socket.handshake.query.token).then(async (decodedIdToken) => {
+  await withCacheVerifyIdToken(socket.handshake.query.token)
+  .then(async (decodedIdToken) => {
       const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
       const paramsformycampaigns = [decodedIdToken.uid, socket.handshake.query.campaignid]
 
@@ -87,12 +47,14 @@ const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, n
         if (membershipsforuid.rows.length > 0) {
               next()
         } else {
-                  next(new Error('forbidden'))
+                  next(new Error('forbidden no membership found'))
         }
       })
   })
     .catch((error) => {
-      next(new Error('forbidden'))
+      console.error(error)
+     // next(new Error('forbidden, error'))
+     next()
     })
 
   // else throw error
@@ -106,56 +68,106 @@ const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, n
 
 campaignmainpage.on('connection', async (socket) => {
 
+ 
+
   var lastsentlist = [];
 
-  const campaignid = socket.handshake.query.campaignid;
+  const campaignid:any = socket.handshake.query.campaignid;
 
   console.log('campaignid', campaignid)
+
+  recountunreadmessages(campaignid)
   
   var initialDecodedIdToken = await withCacheVerifyIdToken(socket.handshake.query.token);
 
+  var firsttime = true;
+  var n=0
+
   function sendTheList () {
+    n++;
     cassandraclient.execute("SELECT * FROM texter.numberofunreadchannelsineachlist WHERE campaignid = ?", [campaignid])
   .then((results) => {
-
-    if (lastsentlist != results.rows) {
+    var outputJsonString:any = JSON.stringify(results.rows)
+    console.log('outputjson', outputJsonString)
+    if ((lastsentlist != outputJsonString) || firsttime === true) {
       var resultsToSendBack = {
         campaignid: campaignid,
         rows: results.rows
       }
 
+    
+
+      
+
     socket.emit("listoflists",resultsToSendBack);
+
+      
+    firsttime === false;
+    lastsentlist = outputJsonString;
+
+    if (results.rows.length === 0 && n < 5) {
+      recountunreadmessages(campaignid)
+      sendTheList()
+    }
+    
     }
 
-    lastsentlist = results.rows;
   })
   }
 
   sendTheList();
 
   setInterval(() => {
-    sendTheList
-  }, 1000)
-})
+    sendTheList();
+  }, 1000);
 
-//rethink io .changes()
-//emit to sockets in campaign room with table
+  socket.on("getListChannels",async (message) => {
+    if (message.listid) {
+      await cassandraclient.execute('SELECT * FROM texter.phonenumberslist WHERE listid = ?', 
+      [message.listid])
+      .then(async(resultOfNumbers:any) => {
+      
+        var uniqedNumbersList =   _.uniq(resultOfNumbers.rows)
 
-function filterOutUnwantedKeyUid(obj, uid) {
-  Object.fromEntries(
-    Object.entries(obj).filter(([key, value]) => key != uid)
-  )
-}
+        var rowsPromise = uniqedNumbersList.map((eachRow) => {
+          return cassandraclient.execute("SELECT * FROM texter.channelevents WHERE twilionumber = ?",
+           [eachRow.phonenumber])
+        })
 
-campaign.on('connection', async (socket) => {
+       Promise.all(rowsPromise)
+       .then((rowsPromiseResults:any) => {
+         var listOfChannels:any = []
 
-  var initialDecodedIdToken = await withCacheVerifyIdToken(socket.handshake.query.token);
+          rowsPromiseResults.forEach((eachPhoneNumber:any) => {
+            if (eachPhoneNumber.rows.length > 0) {
+              var chosenItem = eachPhoneNumber.rows.sort((firstEl:any, secondEl:any) => {
+                var firstElTime = firstEl.timestamp.getDate().getTime()
+                var secondElTime = secondEl.timestamp.getDate().getTime()
 
-  const workspace = socket.nsp;
+                if (firstElTime > secondElTime) {
+                  return -1;
+                } else {
+                  return 1;
+                }
+              })[0]
 
-  //socket.handshake.query.name
+             listOfChannels = [...listOfChannels, chosenItem]
 
-  //workspace.emit('hello');
+              
+            }
+          });
+
+          socket.emit('sendListOfChannelsForList', {
+            listofchannels: listOfChannels,
+            listid: message.listid
+          })
+       })
+       
+      });
+    }
+
+  })
+
 
   if (true) {
     r.dbList().contains('texterpresence')
@@ -167,7 +179,7 @@ campaign.on('connection', async (socket) => {
         );
       }).run();
 
-    console.log('socket.handshake.query', socket.handshake.query)
+   // console.log('socket.handshake.query', socket.handshake.query)
 
     if (socket.handshake.query) {
       if (socket.handshake.query.campaignid) {
@@ -325,7 +337,16 @@ campaign.on('connection', async (socket) => {
   }
 
 
-});
+})
+
+//rethink io .changes()
+//emit to sockets in campaign room with table
+
+function filterOutUnwantedKeyUid(obj, uid) {
+  Object.fromEntries(
+    Object.entries(obj).filter(([key, value]) => key != uid)
+  )
+}
 
 
 
