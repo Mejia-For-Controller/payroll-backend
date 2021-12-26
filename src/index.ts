@@ -1018,12 +1018,14 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                   eventsArray.push({
                     channelid: eachRow.channelid,
                     timestamp: eachRow.timestamp.getDate().getTime(),
+                    timeuuid: eachRow.timestamp,
                     twilionumber: eachRow.twilionumber,
                     type: eachRow.type,
                     body: eachRow.body,
                     fromtwilio: eachRow.fromtwilio,
                     totwilio: eachRow.totwilio,
-                    hasmedia: eachRow.hasmedia
+                    hasmedia: eachRow.hasmedia,
+                    usereversent: eachRow.usereversent
                   })
                   }
               } else {
@@ -1035,7 +1037,8 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
                   body: eachRow.body,
                   fromtwilio: eachRow.fromtwilio,
                   totwilio: eachRow.totwilio,
-                  hasmedia: eachRow.hasmedia
+                  hasmedia: eachRow.hasmedia,
+                  usereversent: eachRow.usereversent
                 })
              }
             })

@@ -70,7 +70,7 @@ const campaignmainpage = io.of(/^\/campaignmainpage\/\w+$/).use(async (socket, n
 
 campaignmainpage.on('connection', async (socket) => {
 
- 
+  var lastlistid = ""
 
   var lastsentlist = [];
 
@@ -124,6 +124,7 @@ campaignmainpage.on('connection', async (socket) => {
   }, 1000);
 
   socket.on("getListChannels",async (message) => {
+
     if (message.listid) {
       await cassandraclient.execute("SELECT * FROM texter.listindex WHERE campaignid = ? AND listid = ?", [
         campaignid, TimeUuid.fromString(message.listid)
@@ -147,7 +148,9 @@ campaignmainpage.on('connection', async (socket) => {
 
           rowsPromiseResults.forEach((eachPhoneNumber:any) => {
             if (eachPhoneNumber.rows.length > 0) {
-              var chosenItem = eachPhoneNumber.rows.sort((firstEl:any, secondEl:any) => {
+              var chosenItemArray = eachPhoneNumber.rows
+              .map((eachRow) => eachRow)
+              .sort((firstEl:any, secondEl:any) => {
                 var firstElTime = firstEl.timestamp.getDate().getTime()
                 var secondElTime = secondEl.timestamp.getDate().getTime()
 
@@ -156,16 +159,38 @@ campaignmainpage.on('connection', async (socket) => {
                 } else {
                   return 1;
                 }
-              })[0]
+              })
 
-             listOfChannels = [...listOfChannels, chosenItem]
+              logger.info({
+                data: chosenItemArray,
+                type: 'chosenItemArray'
+              })
 
               
+              logger.info({
+                data: chosenItemArray[0],
+                type: 'chosenItemArray0'
+              })
+
+         
+
+              listOfChannels.push(chosenItemArray[0])
+
             }
           });
 
+          var listOfChannelsCleaned = listOfChannels.map((item:any) => {
+              var row:any = item;
+
+              row["timestamp"] = item.timestamp.getDate().getTime();
+
+              row["timeuuid"] = item.timestamp;
+
+              return row;
+          })
+
           socket.emit('sendListOfChannelsForList', {
-            listofchannels: listOfChannels,
+            listofchannels: listOfChannelsCleaned,
             listid: message.listid
           })
        })
@@ -232,6 +257,40 @@ campaignmainpage.on('connection', async (socket) => {
           }
          
         });
+
+        socket.on('uploadreads', async (data) => {
+          var arrayOfReads = data.reads;
+
+          arrayOfReads.forEach(async (snowflake:string) => {
+            var uuidsnowflake = TimeUuid.fromString(snowflake)
+         await   cassandraclient.execute("SELECT * FROM texter.readmsgs WHERE snowflake = ? AND campaignid = ? ALLOW FILTERING",
+            [
+              uuidsnowflake,
+              campaignid
+            ])
+            .then(async (results) => {
+              if (results.rows.length > 0) {
+               await cassandraclient.execute("UPDATE texter.readmsgs SET read = ? WHERE campaignid = ? AND channelid = ? AND snowflake = ?",
+                [true, campaignid, results.rows[0].channelid, uuidsnowflake])
+                .catch((rowserror) => {
+                  logger.error(rowserror)
+                })
+            } else {
+              logger.error('cant find the read msg', {
+                snowflake: uuidsnowflake,
+                campaignid
+              })
+            }
+            })
+            .catch((rowserror) => {
+              logger.error(rowserror)
+            })
+          
+          })
+
+          
+  recountunreadmessages(campaignid)
+        })
 
 
         socket.on("uploadPresence", async (data) => {
