@@ -93,11 +93,19 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                 const paramsForChannelsSearch = [req.params.campaignid, req.body.From]
                 
                 var channelidToInsertMsg: any;
+
+                var resultFromChannelSearchGlobal: any;
+
                     
                 await cassandraclient.execute(queryForChannelsSearch, paramsForChannelsSearch, { prepare: true })
                     .then(async (resultFromChannelSearch) => {
+                        resultFromChannelSearchGlobal = resultFromChannelSearch
+
+
+                        
                         console.log("searched for channels")
                         if (resultFromChannelSearch.rows.length === 0) {
+
                         //create the channel
                         const createNewChannelQuery = "INSERT INTO texter.channels (channelid, campaignid, twilionumber, targeteverresponded) VALUES (?, ?, ?, ?)"
                             const createNewChannelParams = [snowflake, req.params.campaignid, req.body.From, true]
@@ -201,6 +209,7 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                     })
                     
                     //update channel list of events
+
                     var queryToUpdateChannelEvents = 'INSERT INTO texter.channelevents (usereversent, campaignid, channelid, timestamp, twilionumber, fromtwilio, totwilio, campaignvolunteeruidassigned, body, type, hasmedia, read) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
                     var paramsToUpdateChannelEvents = [true, req.params.campaignid, channelidToInsertMsg, snowflake, req.body.From, req.body.From, req.body.To, null, req.body.Body,
                         "inbound", hasMediaState, false]
@@ -349,6 +358,10 @@ twiliorouter.all('/statuscallback/:campaignid', [twilioFormat, urlencoded({ exte
                                     logger.error(error)
                             })*/
 
+                            var targeteverrespondedToSet;
+
+                            targeteverrespondedToSet = resultOfChannelsSearch.rows[0].targeteverresponded;
+
                             const queryForUpdatingSnowflake = "UPDATE texter.messages SET messagestatus = ?, history = history + ? WHERE channelid = ? AND bucket = ? and snowflake = ?"
                             const newHistory = {}
                             newHistory[req.body.MessageStatus] = currentDate
@@ -380,7 +393,7 @@ twiliorouter.all('/statuscallback/:campaignid', [twilioFormat, urlencoded({ exte
                                         }
                                         //update channel list of events
                       var queryToUpdateChannelEvents = 'INSERT INTO texter.channelevents (usereversent, campaignid, channelid, timestamp, twilionumber, fromtwilio, totwilio, campaignvolunteeruidassigned, body, type, hasmedia, read) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-                      var paramsToUpdateChannelEvents = [true, req.params.campaignid, channelidToInsertMsg,snowflake, req.body.To, req.body.From, req.body.To, null, resultOfSnowflakeSearch.rows[0].body,
+                      var paramsToUpdateChannelEvents = [targeteverrespondedToSet, req.params.campaignid, channelidToInsertMsg,snowflake, req.body.To, req.body.From, req.body.To, null, resultOfSnowflakeSearch.rows[0].body,
                           `outbound-${req.body.MessageStatus}`, hasMediaState, false]
                       
                       await cassandraclient.execute(queryToUpdateChannelEvents, paramsToUpdateChannelEvents, { prepare: true })
