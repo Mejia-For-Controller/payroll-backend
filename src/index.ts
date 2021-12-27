@@ -17,7 +17,7 @@ import axios from 'axios'
 import qs from 'qs';
 import { bucketCalc } from './utils';
 import { myCache } from './cache';
-import { deleteOldEventsForCampaign } from './deleteOldChannelEvents';
+import { deleteOldEventsForCampaign, deleteOldReadMessages } from './deleteOldChannelEvents';
 import {uploadfiles} from './routes/uploadfiles';
 import {cacheOfSecureTokens,uploadUserDetailsFromDecodedIdToken,withCacheVerifyIdToken} from './cacheIdTokens';
 import * as Papa from 'papaparse';
@@ -72,20 +72,6 @@ function isThisUserTokenPartOfCampaign(token, campaignid) {
   });
 }
 
-app.all('/putreadmsgs', [cors(), express.json()], (req, res) => {
-  withCacheVerifyIdToken(req.body.firebasetoken)
-  .then(async (decodedIdToken) => {
-    const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
-    const paramsformycampaigns = [decodedIdToken.uid,  req.body.campaignid]
-
-    cassandraclient.execute(queryformycampaigns,paramsformycampaigns, {prepare: true})
-    .then(async (membershipresult:any) => {
-      if (membershipresult.rows.length > 0) {
-      }
-    })
-  })
-});
-
 app.all('/getunreadmsgs', [cors(), express.json()], (req, res) => {
   isThisUserTokenPartOfCampaign(req.body.firebasetoken, req.body.campaignid)
   .then((resultsOfMembershipCheck) => {
@@ -93,7 +79,9 @@ app.all('/getunreadmsgs', [cors(), express.json()], (req, res) => {
 if (req.body.global === true) {
   cassandraclient.execute('SELECT * FROM texter.readmsgs WHERE campaignid = ?', [req.body.campaignid])
   .then((readmsgsresults) => {
-    var rowsResults = readmsgsresults.rows;
+    var rowsResults:any = readmsgsresults.rows;
+
+    rowsResults = rowsResults.filter((eachItem) => eachItem.read === true);
 
     res.send({
       rows: rowsResults
@@ -110,8 +98,11 @@ if (req.body.global === true) {
     console.error(error)
   })
 
-       
-     
+  deleteOldReadMessages();
+    
+  //recount unreadmsgs
+  recountunreadmessages(req.body.campaignid)
+
 });
 
 // define a route handler for the default home page

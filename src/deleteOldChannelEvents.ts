@@ -6,6 +6,20 @@ interface listOfLatestInterface {
   [key: string]: any;
 }
 
+export async function deleteOldReadMessages() {
+  await cassandraclient.execute('SELECT * FROM texter.readmsgs WHERE read = ?', [true])
+  .then((results) => {
+    results.rows.forEach(async(eachRow) => {
+      await cassandraclient.execute("DELETE FROM texter.readmsgs WHERE campaignid = ? AND channelid = ? AND snowflake = ? IF EXISTS", 
+      [
+        eachRow.campaignid, eachRow.channelid, eachRow.snowflake
+      ])
+    })
+  }).catch((error) => {
+    logger.error(error)
+  })
+}
+
 export async function deleteOldEventsForCampaign(campaignid) {
   var latest: listOfLatestInterface = {
     

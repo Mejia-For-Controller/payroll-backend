@@ -237,7 +237,7 @@ twiliorouter.all('/incomingmsg/:campaignid', [twilioFormat, urlencoded({ extende
                     logger.error({ type: "errorofreadeventadd", error: errorOfReadEvent })
                    })
 
-                   try {recountunreadmessages( req.params.campaignid)}
+                   try {recountunreadmessages(req.params.campaignid)}
                    catch (unreadchannelserr) {
                        console.log(unreadchannelserr)
                    }

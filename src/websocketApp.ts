@@ -289,7 +289,9 @@ campaignmainpage.on('connection', async (socket) => {
           })
 
           
-  recountunreadmessages(campaignid)
+  recountunreadmessages(campaignid);
+
+  sendTheList();
         })
 
 
