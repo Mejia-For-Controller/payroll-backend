@@ -1,12 +1,19 @@
 import { cassandraclient } from "./cassandra";
 import { logger } from './logger'
 
+import _ from 'lodash';
+
 export async function recountunreadmessages(campaignid:string) {
     console.log('recount unread msgs for ', campaignid)
    await cassandraclient.execute("SELECT * FROM texter.campaigns WHERE campaignid = ?", [campaignid])
     .then(async (resultOfCampaignLookup) => {
         if (resultOfCampaignLookup.rows.length > 0) {
             console.log('campaign found')
+
+            await cassandraclient.execute("SELECT * FROM texter.readmsgs")
+            .then(async(texterreadmsgsresult) => {
+                
+          
             
             await cassandraclient.execute('SELECT * FROM texter.listindex WHERE campaignid = ?', [campaignid])
             .then((listindexresults) => {
@@ -16,7 +23,9 @@ export async function recountunreadmessages(campaignid:string) {
                     await cassandraclient.execute('SELECT * FROM texter.phonenumberslist WHERE listid = ?', [listeach.listid])
                     .then(async(resultOfNumbers) => {
                         var numberOfUnreadChannels = 0;
+/*
 
+                        
                         var arrayOfPromises = resultOfNumbers.rows.map((eachRow) => {
                             return cassandraclient.execute("SELECT * FROM texter.readmsgs WHERE twilionumber = ?", [eachRow.phonenumber])
                         })
@@ -31,7 +40,18 @@ export async function recountunreadmessages(campaignid:string) {
                                             
                             }
 
+                        })*/
+
+                        var arrayOfPhoneNumbers:Array<any> = [];
+
+                        texterreadmsgsresult.rows.forEach((eachRowItem) => {
+                            arrayOfPhoneNumbers.push(eachRowItem.twilionumber);
                         })
+
+                        var arrayOfPhoneNumbersUniq = _.uniq(arrayOfPhoneNumbers)
+
+                        numberOfUnreadChannels = arrayOfPhoneNumbersUniq.length;
+                      
 
                         await cassandraclient.execute(
                             "INSERT INTO texter.numberofunreadchannelsineachlist (listid, campaignid, unreadcount, name, fileoriginid, rowcount) VALUES (?,?,?,?,?,?)",
@@ -49,8 +69,9 @@ export async function recountunreadmessages(campaignid:string) {
                     })
                     })
                 })
+           
             })
-
+       
         }
     })
     .catch((errorOfCampaignLookup) => {

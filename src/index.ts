@@ -76,12 +76,12 @@ app.all('/getunreadmsgs', [cors(), express.json()], (req, res) => {
   isThisUserTokenPartOfCampaign(req.body.firebasetoken, req.body.campaignid)
   .then((resultsOfMembershipCheck) => {
 //successfully logged in
-if (req.body.global === true) {
+if (true) {
   cassandraclient.execute('SELECT * FROM texter.readmsgs WHERE campaignid = ?', [req.body.campaignid])
   .then((readmsgsresults) => {
     var rowsResults:any = readmsgsresults.rows;
 
-    rowsResults = rowsResults.filter((eachItem) => eachItem.read === true);
+    rowsResults = rowsResults
 
     res.send({
       rows: rowsResults
@@ -101,7 +101,7 @@ if (req.body.global === true) {
   deleteOldReadMessages();
     
   //recount unreadmsgs
-  recountunreadmessages(req.body.campaignid)
+  recountunreadmessages(req.body.campaignid);
 
 });
 
