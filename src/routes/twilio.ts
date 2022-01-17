@@ -358,9 +358,7 @@ twiliorouter.all('/statuscallback/:campaignid', [twilioFormat, urlencoded({ exte
                                     logger.error(error)
                             })*/
 
-                            var targeteverrespondedToSet;
-
-                            targeteverrespondedToSet = resultOfChannelsSearch.rows[0].targeteverresponded;
+                            var targeteverrespondedToSet = resultOfChannelsSearch.rows[0].targeteverresponded;
 
                             const queryForUpdatingSnowflake = "UPDATE texter.messages SET messagestatus = ?, history = history + ? WHERE channelid = ? AND bucket = ? and snowflake = ?"
                             const newHistory = {}

@@ -50,7 +50,7 @@ const DOMPurify = createDOMPurify(window);
 function isThisUserTokenPartOfCampaign(token, campaignid) {
   return new Promise((resolve, reject) => {
     withCacheVerifyIdToken(token)
-    .then(async (decodedIdToken) => {
+    .then(async (decodedIdToken:any) => {
       const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
       const paramsformycampaigns = [decodedIdToken.uid,  campaignid]
   
@@ -71,6 +71,52 @@ function isThisUserTokenPartOfCampaign(token, campaignid) {
     })
   });
 }
+
+app.all('/getuserpref', [cors(), express.json()], (req, res) => {
+  withCacheVerifyIdToken(req.body.firebasetoken)
+  .then(async (decodedIdToken:any) => {
+    await cassandraclient.execute("SELECT * FROM texter.userpref WHERE userid = ?", [decodedIdToken.uid])
+    .then(async(resultsOfUserPref:any) => {
+      if (resultsOfUserPref.rows.length > 0)  {
+        res.send({
+          seperatesides: resultsOfUserPref.rows[0].seperatesides
+        })
+      } else { 
+        res.send({
+          seperatesides: false
+        });
+
+        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides) VALUES (?,?)",[decodedIdToken.uid, false])
+        .catch((error) => {
+          console.error(error)
+        })
+      }
+    })
+  }
+
+  )
+}
+);
+
+
+app.all('/putuserpref', [cors(), express.json()], (req, res) => {
+  withCacheVerifyIdToken(req.body.firebasetoken)
+  .then(async(decodedIdToken:any) => {
+  
+
+        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides) VALUES (?,?)",[decodedIdToken.uid, req.body.seperatesides])
+        .then((resultsofuserpref) => {
+          res.send({
+            status: true
+          })
+        })
+        .catch((error) => {
+          console.error(error)
+        })
+      }
+
+    
+)});
 
 app.all('/getunreadmsgs', [cors(), express.json()], (req, res) => {
   isThisUserTokenPartOfCampaign(req.body.firebasetoken, req.body.campaignid)
@@ -101,7 +147,7 @@ if (true) {
   deleteOldReadMessages();
     
   //recount unreadmsgs
-  recountunreadmessages(req.body.campaignid);
+ // recountunreadmessages(req.body.campaignid);
 
 });
 

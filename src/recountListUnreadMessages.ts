@@ -48,10 +48,14 @@ export async function recountunreadmessages(campaignid:string) {
                             arrayOfPhoneNumbers.push(eachRowItem.twilionumber);
                         })
 
-                        var arrayOfPhoneNumbersUniq = _.uniq(arrayOfPhoneNumbers)
+                        var arrayOfPhoneNumbersUniq = _.uniq(arrayOfPhoneNumbers);
 
-                        numberOfUnreadChannels = arrayOfPhoneNumbersUniq.length;
-                      
+                        resultOfNumbers.rows.forEach((eachPhoneNumber) => {
+                            var filteredArray = arrayOfPhoneNumbersUniq.filter((eachItem) => eachItem === eachPhoneNumber.phonenumber)
+                            if (filteredArray.length > 0) {
+                                numberOfUnreadChannels = numberOfUnreadChannels + 1;
+                            }
+                        })
 
                         await cassandraclient.execute(
                             "INSERT INTO texter.numberofunreadchannelsineachlist (listid, campaignid, unreadcount, name, fileoriginid, rowcount) VALUES (?,?,?,?,?,?)",
