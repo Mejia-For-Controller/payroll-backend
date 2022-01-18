@@ -90,7 +90,7 @@ campaignmainpage.on('connection', async (socket) => {
     cassandraclient.execute("SELECT * FROM texter.numberofunreadchannelsineachlist WHERE campaignid = ?", [campaignid])
   .then((results) => {
     var outputJsonString:any = JSON.stringify(results.rows)
-    console.log('outputjson', outputJsonString)
+  //  console.log('outputjson', outputJsonString)
     if ((lastsentlist != outputJsonString) || firsttime === true) {
       var resultsToSendBack = {
         campaignid: campaignid,
