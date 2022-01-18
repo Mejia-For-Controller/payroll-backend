@@ -161,6 +161,7 @@ campaignmainpage.on('connection', async (socket) => {
                 }
               })
 
+              /*
               logger.info({
                 data: chosenItemArray,
                 type: 'chosenItemArray'
@@ -170,7 +171,7 @@ campaignmainpage.on('connection', async (socket) => {
               logger.info({
                 data: chosenItemArray[0],
                 type: 'chosenItemArray0'
-              })
+              })*/
 
          
 
