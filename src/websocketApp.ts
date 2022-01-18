@@ -195,6 +195,9 @@ campaignmainpage.on('connection', async (socket) => {
             listid: message.listid
           })
        })
+       .catch((errorOfPromise) => {
+         console.error(errorOfPromise)
+       })
        
       });
         }
