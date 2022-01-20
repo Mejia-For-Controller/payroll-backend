@@ -98,7 +98,7 @@ app.all('/getuserpref', [cors(), express.json()], (req, res) => {
         res.send({
           seperatesides: firstrow.seperatesides,
           lexend: lexendstate,
-          profilepic: firstrow.profilepic
+          profilepic: profstate
 
         })
       } else { 
