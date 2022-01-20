@@ -846,7 +846,7 @@ app.all('/getchannelevents', [cors(), cookieParser(), express.json()], async (re
             if (req.body.onlyPastDay) {
               var currentTime = Date.now();
               var current24HrAgo = currentTime - 86400000;
-              eventsArray = eventsArray.filter((eachRow) => eachRow.timestamp.getDate().getTime() > current24HrAgo)
+              eventsArray = eventsArray.filter((eachRow) => eachRow.timestamp > current24HrAgo)
             }
 
             res.json({
