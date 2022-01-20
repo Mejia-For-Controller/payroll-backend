@@ -38,8 +38,56 @@ export async function sendBlast (req,res) {
           if (listindexresult.rows.length > 0) {
             console.log('list found')
 
+            if (req.body.blastmediaurl) {
+                //get content header
+  
+                var axiosheaderresult;
+                
+                await axios.get(req.body.blastmediaurl)
+                .then((mediaurlresponse) => {
+                  axiosheaderresult = mediaurlresponse.headers['content-type']
+                  logger.info( axiosheaderresult, {type: 'axiosheaderresult'})
+                })
+                .catch((error) => {
+                  logger.error(error, {type: "mediaurlerrorfailed"})
+                })
+              }
+
             if (req.body.typeoftext === 'queue') {
-              
+                cassandraclient.execute("INSERT INTO texter.queue (campaignid, queueid, smscontent, mediastring, mediamime, sentbyuid) VALUES (?,?,?,?,?,?)",
+                [
+                  req.body.campaignid, 
+                  blastid,
+                  req.body.blasttext,
+                  req.body.blastmediaurl,
+                  axiosheaderresult,
+                  decodedIdToken.uid
+                ])
+
+//get all the numbers in the list                
+            cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])
+            .then(async (listnumberresults) => {
+              listnumberresults.rows.forEach(async (eachPhoneNumberRow:any) => {
+                  // put it into the queue checkbox list
+                  cassandraclient.execute("INSERT INTO phonenumberqueuelist (queueid, twilionumber, sent, firstname, clientidempotency, senttime) VALUES (?,?,?,?,?,?)", 
+                  [
+                      blastid,
+                      eachPhoneNumberRow.phonenumber,
+                      false,
+                      eachPhoneNumberRow.firstname,
+                      null,
+                      null
+                  ])
+                  .then((resultOfQueueRow) => {
+
+                  })
+                  .catch((errorOfQueueRow) => {
+                    logger.error(errorOfQueueRow)
+                  })
+              }
+              )
+            });
+
             }
 
            if (req.body.typeoftext === 'blast') {
@@ -50,21 +98,6 @@ export async function sendBlast (req,res) {
               decodedIdToken.uid,
               req.body.blasttext
             ])
-
-            if (req.body.blastmediaurl) {
-              //get content header
-
-              var axiosheaderresult;
-              
-              await axios.get(req.body.blastmediaurl)
-              .then((mediaurlresponse) => {
-                axiosheaderresult = mediaurlresponse.headers['content-type']
-                logger.info( axiosheaderresult, {type: 'axiosheaderresult'})
-              })
-              .catch((error) => {
-                logger.error(error, {type: "mediaurlerrorfailed"})
-              })
-            }
 
 
             cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])
