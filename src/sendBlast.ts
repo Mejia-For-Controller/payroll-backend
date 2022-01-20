@@ -54,15 +54,21 @@ export async function sendBlast (req,res) {
               }
 
             if (req.body.typeoftext === 'queue') {
-                cassandraclient.execute("INSERT INTO texter.queue (campaignid, queueid, smscontent, mediastring, mediamime, sentbyuid) VALUES (?,?,?,?,?,?)",
+                cassandraclient.execute("INSERT INTO texter.queue (campaignid, queueid, smscontent, mediastring, mediamime, sentbyuid, listname, listid) VALUES (?,?,?,?,?,?,?,?)",
                 [
                   req.body.campaignid, 
                   blastid,
                   req.body.blasttext,
                   req.body.blastmediaurl,
                   axiosheaderresult,
-                  decodedIdToken.uid
+                  decodedIdToken.uid,
+                  listindexresult.rows[0].name,
+                  listindexresult.rows[0].listid
                 ])
+                .catch((errorMakeQueue) => {
+                    logger.error(errorMakeQueue)
+                    console.error(errorMakeQueue)
+                })
 
 //get all the numbers in the list                
             cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])

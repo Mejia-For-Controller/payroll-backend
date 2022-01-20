@@ -111,6 +111,27 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
+    
+  await cassandraclient
+  .execute(
+    "CREATE TABLE IF NOT EXISTS texter.queue (campaignid text, queueid timeuuid, smscontent text, mediastring text, mediamime text, sentbyuid text, listid text, listid timeuuid, rowcount int, PRIMARY KEY (campaignid, queueid)"
+  )
+  .then(async (result) => {
+    // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+    // console.log(result)
+  })
+  .catch((error) => console.error(error));
+
+  await cassandraclient
+  .execute(
+    "CREATE TABLE IF NOT EXISTS texter.phonenumberqueuelist (queueid timeuuid, sent boolean, firstname text, clientidempotency text, twilionumber text, senttime timeuuid, PRIMARY KEY (queueid, twilionumber)"
+  )
+  .then(async (result) => {
+    // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
+    // console.log(result)
+  })
+  .catch((error) => console.error(error));
+
   await cassandraclient
     .execute("CREATE INDEX IF NOT EXISTS ON texter.channels (twilionumber);")
     .then(async (result) => {
