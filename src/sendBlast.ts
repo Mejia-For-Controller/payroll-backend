@@ -94,6 +94,12 @@ export async function sendBlast (req,res) {
               )
             });
 
+
+            //send it back to the frontend
+            res.send({
+                success: true,
+                type: 'queue'
+              })
             }
 
            if (req.body.typeoftext === 'blast') {
