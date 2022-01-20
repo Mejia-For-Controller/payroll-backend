@@ -35,7 +35,7 @@ export async function createDatabases() {
     })
     .catch((error) => console.error(error));
 
-    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.userpref (userid text PRIMARY KEY, seperatesides boolean)')
+    await cassandraclient.execute('CREATE TABLE IF NOT EXISTS texter.userpref (userid text PRIMARY KEY, seperatesides boolean, lexend boolean, profilepic boolean)')
     .then(async (result) => {
       // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
       //      console.log(result)

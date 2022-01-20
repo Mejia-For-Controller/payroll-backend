@@ -78,15 +78,21 @@ app.all('/getuserpref', [cors(), express.json()], (req, res) => {
     await cassandraclient.execute("SELECT * FROM texter.userpref WHERE userid = ?", [decodedIdToken.uid])
     .then(async(resultsOfUserPref:any) => {
       if (resultsOfUserPref.rows.length > 0)  {
+        var firstrow = resultsOfUserPref.rows[0]
         res.send({
-          seperatesides: resultsOfUserPref.rows[0].seperatesides
+          seperatesides: firstrow.seperatesides,
+          lexend: firstrow.lexend,
+          profilepic: firstrow.profilepic
+
         })
       } else { 
         res.send({
-          seperatesides: false
+          seperatesides: false,
+          lexend: false,
+          profilepic: false
         });
 
-        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides) VALUES (?,?)",[decodedIdToken.uid, false])
+        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides, lexend, profilepic) VALUES (?,?,?,?)",[decodedIdToken.uid, false, false, false])
         .catch((error) => {
           console.error(error)
         })
@@ -104,7 +110,8 @@ app.all('/putuserpref', [cors(), express.json()], (req, res) => {
   .then(async(decodedIdToken:any) => {
   
 
-        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides) VALUES (?,?)",[decodedIdToken.uid, req.body.seperatesides])
+        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides, lexend, profilepic) VALUES (?,?,?,?)",
+        [decodedIdToken.uid, req.body.seperatesides, req.body.lexend, req.body.profilepic])
         .then((resultsofuserpref) => {
           res.send({
             status: true
