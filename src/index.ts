@@ -79,9 +79,25 @@ app.all('/getuserpref', [cors(), express.json()], (req, res) => {
     .then(async(resultsOfUserPref:any) => {
       if (resultsOfUserPref.rows.length > 0)  {
         var firstrow = resultsOfUserPref.rows[0]
+
+        var lexendstate;
+        if (firstrow.lexend === null || firstrow.lexend === undefined) {
+          lexendstate = false
+        }  else {
+          lexendstate = firstrow.lexend
+        }
+
+        var profstate;
+        if (firstrow.profilepic === null || firstrow.profilepic === undefined) {
+          profstate = false
+        }  else {
+         profstate = firstrow.profilepic
+        }
+
+
         res.send({
           seperatesides: firstrow.seperatesides,
-          lexend: firstrow.lexend,
+          lexend: lexendstate,
           profilepic: firstrow.profilepic
 
         })
