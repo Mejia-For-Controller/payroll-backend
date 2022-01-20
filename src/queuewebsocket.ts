@@ -70,7 +70,30 @@ const queuecampaignws = io.of(/^\/queuecampaignws\/\w+$/).use(async (socket, nex
 
 queuecampaignws.on('connection', async (socket) => {
     socket.on('getListOfQueues', async (data) => {
+            //select for all queues...
+            // for each, do SELECT COUNT(*) in phone queuelist with SENT = TRUE
+
+            // put into array and send
         console.log('requested queues')
+    })
+
+    socket.on('sendone', async (data) => {
+        //get queue id
+
+        // SELECT * FROM queues where queueid = data.queueid
+        
+        //SELECT * FROM queuephonelist where queueid = data.queueid AND sent = false allow filtering Limit 50;
+
+        // pick random
+
+        //check if channels, set up channels, message content, etc
+
+        //insert that it has been sent
+
+        // send using replacement body and media
+        console.log('sendone')
+
+        //emit back the number of stuff in queue
     })
 })
 
