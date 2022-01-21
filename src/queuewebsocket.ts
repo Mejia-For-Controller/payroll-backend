@@ -317,7 +317,26 @@ queuecampaignws.on('connection', async (socket) => {
                           console.log('sending it back to client')
       
                         //THIS IS TEMP!!! REMOVE AND REPLACE WITH SEND ONLY NEW COUNTS!!!
-                        sendOutQueues()
+                        //sendOutQueues()
+
+
+                        //replacement code for updating send count
+
+                        cassandraclient.execute("SELECT COUNT(*) FROM texter.phonenumberqueuelist WHERE queueid = ? AND sent = ? ALLOW FILTERING",
+                        [queueToUse.queueid, true])
+                        .then((newQueueSendCount) => {
+                            var countofsentmsg = newQueueSendCount.rows[0].count.low;
+                            socket.emit('updatesentcount', {
+                                updatedstates: [
+                                    {
+                                        sentcount: countofsentmsg,
+                                        queueid: queueToUse.queueid
+                                    }
+                                ]
+                            })
+                        })
+                        //end replacement code for updating send count
+
       
                         }).catch((error) => {
                             logger.info({ type: "errormessageinsert", error })
