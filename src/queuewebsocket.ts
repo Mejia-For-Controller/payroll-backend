@@ -79,6 +79,13 @@ const queuecampaignws = io.of(/^\/queuecampaignws\/\w+$/).use(async (socket, nex
 });
 
 queuecampaignws.on('connection', async (socket) => {
+
+    var uid;
+
+    await withCacheVerifyIdToken(socket.handshake.query.token)
+    .then(async (decodedIdToken) => {
+        uid = decodedIdToken;
+    });
     const sendOutQueues = async () => {
         //select for all queues...
         // for each, do SELECT COUNT(*) in phone queuelist with SENT = TRUE
@@ -279,8 +286,7 @@ queuecampaignws.on('connection', async (socket) => {
   
                         objectOfHistory[response.data.status] = Long.fromNumber(actualTimestamp) 
       
-                        await withCacheVerifyIdToken(socket.handshake.query.token)
-                        .then(async (decodedIdToken) => {
+                       
 
                         const paramsInsertion = [
                             currentSnowflakeForMsgId,
@@ -295,7 +301,7 @@ queuecampaignws.on('connection', async (socket) => {
                           response.data.sid,
                           response.data.from,
                           response.data.to,
-                          decodedIdToken.uid,
+                          uid,
                           response.data.body,
                           response.data.status,
                           true,
@@ -319,7 +325,6 @@ queuecampaignws.on('connection', async (socket) => {
       //                      res.status(500).send("oops")
                         })
 
-                        });
 
 
 
