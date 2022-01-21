@@ -75,7 +75,7 @@ export async function sendBlast (req,res) {
             .then(async (listnumberresults) => {
               listnumberresults.rows.forEach(async (eachPhoneNumberRow:any) => {
                   // put it into the queue checkbox list
-                  cassandraclient.execute("INSERT INTO phonenumberqueuelist (queueid, twilionumber, sent, firstname, clientidempotency, senttime) VALUES (?,?,?,?,?,?)", 
+                  cassandraclient.execute("INSERT INTO texter.phonenumberqueuelist (queueid, twilionumber, sent, firstname, clientidempotency, senttime) VALUES (?,?,?,?,?,?)", 
                   [
                       blastid,
                       eachPhoneNumberRow.phonenumber,
