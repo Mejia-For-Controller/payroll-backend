@@ -92,6 +92,7 @@ queuecampaignws.on('connection', async (socket) => {
                         var itemToPush =  dupResultsOfAllQueues[itemindex]
 
                         itemToPush['sentcount'] = eachItem.rows[0].count.low;
+                        itemToPush['timestamp'] = itemToPush.queueid.getDate().getTime();
 
                         totalArrayOfRows.push(itemToPush);
                     })
