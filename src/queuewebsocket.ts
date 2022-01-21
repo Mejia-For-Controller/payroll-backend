@@ -86,7 +86,7 @@ queuecampaignws.on('connection', async (socket) => {
 
                 Promise.all(numberOfSentAlready)
                 .then((resultsOfSentCount:any) => {
-                    var totalArrayOfRows;
+                    var totalArrayOfRows:Array<any> = [];
 
                     resultsOfSentCount.forEach((eachItem,itemindex) => {
                         var itemToPush =  dupResultsOfAllQueues[itemindex]
