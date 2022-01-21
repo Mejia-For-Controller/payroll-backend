@@ -84,7 +84,7 @@ queuecampaignws.on('connection', async (socket) => {
 
     await withCacheVerifyIdToken(socket.handshake.query.token)
     .then(async (decodedIdToken) => {
-        uid = decodedIdToken;
+        uid = decodedIdToken.uid;
     });
     const sendOutQueues = async () => {
         //select for all queues...
