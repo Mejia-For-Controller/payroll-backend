@@ -54,7 +54,7 @@ export async function sendBlast (req,res) {
               }
 
             if (req.body.typeoftext === 'queue') {
-                cassandraclient.execute("INSERT INTO texter.queue (campaignid, queueid, smscontent, mediastring, mediamime, sentbyuid, listname, listid) VALUES (?,?,?,?,?,?,?,?)",
+                cassandraclient.execute("INSERT INTO texter.queue (campaignid, queueid, smscontent, mediastring, mediamime, sentbyuid, listname, listid, rowcount) VALUES (?,?,?,?,?,?,?,?,?)",
                 [
                   req.body.campaignid, 
                   blastid,
@@ -63,8 +63,9 @@ export async function sendBlast (req,res) {
                   axiosheaderresult,
                   decodedIdToken.uid,
                   listindexresult.rows[0].name,
-                  listindexresult.rows[0].listid
-                ])
+                  listindexresult.rows[0].listid,
+                  listindexresult.rows[0].rowcount
+                ], {prepare: true})
                 .catch((errorMakeQueue) => {
                     logger.error(errorMakeQueue)
                     console.error(errorMakeQueue)
