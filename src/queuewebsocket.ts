@@ -94,8 +94,6 @@ queuecampaignws.on('connection', async (socket) => {
                         itemToPush['sentcount'] = eachItem.rows[0].count.low;
 
                         totalArrayOfRows.push(itemToPush);
-
-                
                     })
 
                     socket.emit("queuesinfo", {

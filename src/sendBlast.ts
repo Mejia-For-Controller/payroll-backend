@@ -88,7 +88,8 @@ export async function sendBlast (req,res) {
 
                   })
                   .catch((errorOfQueueRow) => {
-                    logger.error(errorOfQueueRow)
+                    logger.error(errorOfQueueRow);
+                    console.error(errorOfQueueRow)
                   })
               }
               )
