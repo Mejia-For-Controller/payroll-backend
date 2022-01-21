@@ -74,7 +74,7 @@ queuecampaignws.on('connection', async (socket) => {
             // for each, do SELECT COUNT(*) in phone queuelist with SENT = TRUE
 
             cassandraclient.execute('SELECT * FROM texter.queue WHERE campaignid = ?', 
-            socket.handshake.query.campaignid
+            [socket.handshake.query.campaignid]
             )
             .then((resultsOfAllQueues) => {
                 var dupResultsOfAllQueues = resultsOfAllQueues.rows;
