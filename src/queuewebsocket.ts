@@ -69,12 +69,52 @@ const queuecampaignws = io.of(/^\/queuecampaignws\/\w+$/).use(async (socket, nex
 });
 
 queuecampaignws.on('connection', async (socket) => {
-    socket.on('getListOfQueues', async (data) => {
-            //select for all queues...
+    const sendOutQueues = async () => {
+         //select for all queues...
             // for each, do SELECT COUNT(*) in phone queuelist with SENT = TRUE
 
+            cassandraclient.execute('SELECT * FROM texter.queue WHERE campaignid = ?', 
+            socket.handshake.query.campaignid
+            )
+            .then((resultsOfAllQueues) => {
+                var dupResultsOfAllQueues = resultsOfAllQueues.rows;
+
+                var numberOfSentAlready = dupResultsOfAllQueues.map((eachQueue) => cassandraclient.execute("SELECT COUNT(*) FROM phonenumberqueuelist WHERE queueid =? AND sent = ? ALLOW FILTERING",
+                [
+                    eachQueue.queueid, true
+                ]));
+
+                Promise.all(numberOfSentAlready)
+                .then((resultsOfSentCount:any) => {
+                    var totalArrayOfRows;
+
+                    resultsOfSentCount.rows.forEach((eachItem,itemindex) => {
+                        var itemToPush =  dupResultsOfAllQueues[itemindex]
+
+                        itemToPush['sentcount'] = eachItem.count.low;
+
+                        totalArrayOfRows.push(itemToPush);
+
+                
+                    })
+
+                    socket.emit("queuesinfo", {
+                        queuearray: totalArrayOfRows
+                    })
+                })
+                .catch((error) => {
+                    logger.error(error)
+                })
+            })
+
             // put into array and send
-        console.log('requested queues')
+            console.log('requested queues')
+    }
+
+    sendOutQueues()
+
+    socket.on('getListOfQueues', async (data) => {
+           sendOutQueues()
     })
 
     socket.on('sendone', async (data) => {
