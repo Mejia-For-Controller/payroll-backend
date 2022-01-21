@@ -114,7 +114,7 @@ export async function createDatabases() {
     
   await cassandraclient
   .execute(
-    "CREATE TABLE IF NOT EXISTS texter.queue (campaignid text, queueid timeuuid, smscontent text, mediastring text, mediamime text, sentbyuid text, listid text, listid timeuuid, rowcount int, PRIMARY KEY (campaignid, queueid)"
+    "CREATE TABLE IF NOT EXISTS texter.queue (campaignid text, queueid timeuuid, smscontent text, mediastring text, mediamime text, sentbyuid text, listname text, listid timeuuid, rowcount int, PRIMARY KEY (campaignid, queueid))"
   )
   .then(async (result) => {
     // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
@@ -124,7 +124,7 @@ export async function createDatabases() {
 
   await cassandraclient
   .execute(
-    "CREATE TABLE IF NOT EXISTS texter.phonenumberqueuelist (queueid timeuuid, sent boolean, firstname text, clientidempotency text, twilionumber text, senttime timeuuid, PRIMARY KEY (queueid, twilionumber)"
+    "CREATE TABLE IF NOT EXISTS texter.phonenumberqueuelist (queueid timeuuid, sent boolean, firstname text, clientidempotency text, twilionumber text, senttime timeuuid, PRIMARY KEY (queueid, twilionumber))"
   )
   .then(async (result) => {
     // await logger.discordDebugLogger.debug({ type: "cassandraclient", result: result })
