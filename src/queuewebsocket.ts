@@ -79,7 +79,7 @@ queuecampaignws.on('connection', async (socket) => {
             .then((resultsOfAllQueues) => {
                 var dupResultsOfAllQueues = resultsOfAllQueues.rows;
 
-                var numberOfSentAlready = dupResultsOfAllQueues.map((eachQueue) => cassandraclient.execute("SELECT COUNT(*) FROM phonenumberqueuelist WHERE queueid =? AND sent = ? ALLOW FILTERING",
+                var numberOfSentAlready = dupResultsOfAllQueues.map((eachQueue) => cassandraclient.execute("SELECT COUNT(*) FROM texter.phonenumberqueuelist WHERE queueid =? AND sent = ? ALLOW FILTERING",
                 [
                     eachQueue.queueid, true
                 ]));
