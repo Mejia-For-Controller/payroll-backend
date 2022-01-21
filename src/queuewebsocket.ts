@@ -103,7 +103,8 @@ queuecampaignws.on('connection', async (socket) => {
                     })
                 })
                 .catch((error) => {
-                    logger.error(error)
+                    logger.error(error);
+                    console.error(error)
                 })
             })
 
