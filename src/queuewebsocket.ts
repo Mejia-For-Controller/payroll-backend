@@ -88,10 +88,10 @@ queuecampaignws.on('connection', async (socket) => {
                 .then((resultsOfSentCount:any) => {
                     var totalArrayOfRows;
 
-                    resultsOfSentCount.rows.forEach((eachItem,itemindex) => {
+                    resultsOfSentCount.forEach((eachItem,itemindex) => {
                         var itemToPush =  dupResultsOfAllQueues[itemindex]
 
-                        itemToPush['sentcount'] = eachItem.count.low;
+                        itemToPush['sentcount'] = eachItem.rows[0].count.low;
 
                         totalArrayOfRows.push(itemToPush);
 
