@@ -71,11 +71,51 @@ export async function sendBlast (req,res) {
                     console.error(errorMakeQueue)
                 })
 
+                const queryToInsertQueueEachRow = "INSERT INTO texter.phonenumberqueuelist (queueid, twilionumber, sent, firstname, clientidempotency, senttime) VALUES (?,?,?,?,?,?)"
+
 //get all the numbers in the list                
             cassandraclient.execute("SELECT * FROM texter.phonenumberslist WHERE listid = ?", [req.body.listid])
             .then(async (listnumberresults) => {
-              listnumberresults.rows.forEach(async (eachPhoneNumberRow:any) => {
+            
+                var listOfQueriedRowsQueue = listnumberresults.rows.map((eachPhoneNumberRow:any) => {
+                    return {
+                        query: queryToInsertQueueEachRow,
+                        params: [
+                            blastid,
+                            eachPhoneNumberRow.phonenumber,
+                            false,
+                            eachPhoneNumberRow.firstname,
+                            null,
+                            null
+                        ]
+                    }
+                })
+
+                 //seperate batch into groups of 69, then send them out
+                 const chunks = _.chunk( listOfQueriedRowsQueue, 69);
+
+                      //map chunks into queries
+                      var chunkedQueries = chunks.map((eachChunk) => cassandraclient.batch(eachChunk, { prepare: true })
+                      .then(function() {
+                        // All queries have been executed successfully
+                      })
+                      .catch(function(err) {
+                        // None of the changes have been applied
+                      }));
+
+                      await Promise.all(chunkedQueries)
+                    .then((resultOfChunkedQueriesInsert:any) => {
+                        logger.info('SUCCESSFULLY INSERTED CHUNKS FOR QUERIES!!!')
+                    })
+                    .catch((errorOfChunkInsert:any) => {
+                        logger.error(errorOfChunkInsert);
+                        console.error(errorOfChunkInsert);
+                    })
+
+           //   listnumberresults.rows.forEach(async (eachPhoneNumberRow:any) => {
+                  
                   // put it into the queue checkbox list
+                  /*
                   cassandraclient.execute("INSERT INTO texter.phonenumberqueuelist (queueid, twilionumber, sent, firstname, clientidempotency, senttime) VALUES (?,?,?,?,?,?)", 
                   [
                       blastid,
@@ -91,9 +131,11 @@ export async function sendBlast (req,res) {
                   .catch((errorOfQueueRow) => {
                     logger.error(errorOfQueueRow);
                     console.error(errorOfQueueRow)
-                  })
-              }
-              )
+                  })*/
+            //  }
+//)
+
+
             });
 
 
