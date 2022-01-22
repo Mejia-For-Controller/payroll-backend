@@ -8,6 +8,7 @@ import axios from 'axios'
 import { myCache } from './cache';
 import {generateIdempotency} from './idempotency'
 import { bucketCalc } from './utils';
+import _ from 'lodash';
 const TimeUuid = require('cassandra-driver').types.TimeUuid;
 const Long = require('cassandra-driver').types.Long;
 
