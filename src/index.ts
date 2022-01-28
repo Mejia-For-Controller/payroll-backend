@@ -14,9 +14,11 @@ import {sendBlast} from './sendBlast'
 import {recountunreadmessages} from './recountListUnreadMessages'
 import { cassandraclient } from './cassandra'
 import {createList} from './createlist'
+import {getuserpref} from './userpref'
 import {logger} from './logger'
 import axios from 'axios'
 import qs from 'qs';
+import {getmembershiproster, invitenewemail} from './membership';
 import { bucketCalc } from './utils';
 import { myCache } from './cache';
 import { deleteOldEventsForCampaign, deleteOldReadMessages } from './deleteOldChannelEvents';
@@ -75,50 +77,7 @@ function isThisUserTokenPartOfCampaign(token, campaignid) {
 }
 
 app.all('/getuserpref', [cors(), express.json()], (req, res) => {
-  withCacheVerifyIdToken(req.body.firebasetoken)
-  .then(async (decodedIdToken:any) => {
-    await cassandraclient.execute("SELECT * FROM texter.userpref WHERE userid = ?", [decodedIdToken.uid])
-    .then(async(resultsOfUserPref:any) => {
-      if (resultsOfUserPref.rows.length > 0)  {
-        var firstrow = resultsOfUserPref.rows[0]
-
-        var lexendstate;
-        if (firstrow.lexend === null || firstrow.lexend === undefined) {
-          lexendstate = false
-        }  else {
-          lexendstate = firstrow.lexend
-        }
-
-        var profstate;
-        if (firstrow.profilepic === null || firstrow.profilepic === undefined) {
-          profstate = false
-        }  else {
-         profstate = firstrow.profilepic
-        }
-
-
-        res.send({
-          seperatesides: firstrow.seperatesides,
-          lexend: lexendstate,
-          profilepic: profstate
-
-        })
-      } else { 
-        res.send({
-          seperatesides: false,
-          lexend: false,
-          profilepic: false
-        });
-
-        await cassandraclient.execute("INSERT INTO texter.userpref (userid, seperatesides, lexend, profilepic) VALUES (?,?,?,?)",[decodedIdToken.uid, false, false, false])
-        .catch((error) => {
-          console.error(error)
-        })
-      }
-    })
-  }
-
-  )
+getuserpref(req,res)
 }
 );
 
@@ -424,135 +383,13 @@ app.all('/campaignname', [cors(), cookieParser(), express.json()], function (req
 });
 
 app.all('/getmembershiproster', [cors(), cookieParser(), express.json()], function (req, res) {
-  withCacheVerifyIdToken(req.body.firebaseToken)
-    .then(async (decodedIdToken) => {
-
-      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
-      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
-
-      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
-        if (membershipsforuid.rows.length > 0) {
-          if (membershipsforuid.rows[0].isadmin || membershipsforuid.rows[0].isowner) {
-            //authorized
-
-            
-
-            const queryformembershiplist = 'SELECT * FROM texter.memberships WHERE campaignid = ?'
-            const paramsformembershiplist = [req.body.campaignid]
-            
-            await Promise.all([
-              cassandraclient.execute('SELECT * FROM texter.invitations WHERE campaignid =?',
-                [req.body.campaignid], { prepare: true }),
-                 cassandraclient.execute(queryformembershiplist, paramsformembershiplist, { prepare: true })
-            ]).then((resultOfBothCassandraQueries) => {
-
-              var rowsOfInvites = resultOfBothCassandraQueries[0].rows
-
-              var resultOfMembershipList = resultOfBothCassandraQueries[1]
-                console.log(resultOfMembershipList)
-
-                // map all of them into promises
-                var rowsOfMembership = resultOfMembershipList.rows;
-
-                var promisesMembershipLookup = rowsOfMembership.map((eachRow) => cassandraclient.execute('SELECT * FROM texter.userinfo WHERE uid = ?', [eachRow.userid], {prepare: true}))
-                
-                //fetch them from the database via promise all
-                Promise.all(promisesMembershipLookup)
-                  .then((usersProfileResponse) => {
-                    //usersProfileResponse is an array of cassandra formats
-                    var resultToSendBack = usersProfileResponse.map((eachUserProfile:any, eachUserProfileIndex:any) => {
-                      //eachUserProfile is a cassandra format
-                      if (eachUserProfile.rows.length === 0) {
-                        return {
-                          name: "null",
-                          uid: rowsOfMembership[eachUserProfileIndex].userid,
-                          email: "null",
-                          picture: "null",
-                          isowner: rowsOfMembership[eachUserProfileIndex].isowner,
-                          isadmin: rowsOfMembership[eachUserProfileIndex].isadmin,
-                          isvolunteer: rowsOfMembership[eachUserProfileIndex].isvolunteer,
-                          joinedtimestamp: rowsOfMembership[eachUserProfileIndex].joinedtime.getDate().getTime()
-                      }
-                      } else {
-                        return {
-                          name: eachUserProfile.rows[0].name,
-                          uid: eachUserProfile.rows[0].uid,
-                          email: eachUserProfile.rows[0].email,
-                          picture: eachUserProfile.rows[0].picture,
-                          isowner: rowsOfMembership[eachUserProfileIndex].isowner,
-                          isadmin: rowsOfMembership[eachUserProfileIndex].isadmin,
-                          isvolunteer: rowsOfMembership[eachUserProfileIndex].isvolunteer,
-                          joinedtimestamp: rowsOfMembership[eachUserProfileIndex].joinedtime.getDate().getTime()
-                      }
-                      }
-
-                      
-                    })
-                    
-                    res.send({
-                      members: resultToSendBack,
-                      invites: rowsOfInvites
-                    })
-                })
-
-                // then return the result
-              })
-              .catch((error) => {
-              console.log(error)
-            })
-          } else {
-            res.send({
-              "success": false
-            })
-          }
-        }
-      })
-    });
-  
-  
+ getmembershiproster(req,res)
 }
 )
 
 
 app.all('/invitenewemail', [cors(), cookieParser(), express.json()], function (req, res) {
-  withCacheVerifyIdToken(req.body.firebaseToken)
-    .then(async (decodedIdToken) => {
-
-      const queryformycampaigns = 'SELECT * FROM texter.memberships WHERE userid = ? AND campaignid = ?'
-      const paramsformycampaigns = [decodedIdToken.uid, req.body.campaignid]
-
-      await cassandraclient.execute(queryformycampaigns, paramsformycampaigns).then(async (membershipsforuid) => {
-        if (membershipsforuid.rows.length > 0) {
-          if (membershipsforuid.rows[0].isadmin || membershipsforuid.rows[0].isowner) {
-            //authorized
-
-            
-
-            const insertinvitelist = 'INSERT INTO texter.invitations (campaignid, email, invitetime, isowner, isadmin, accepted) VALUES (?,?,?,?,?,?)'
-
-            var adminState = false;
-
-            if (req.body.permissions === "admin") {
-              adminState = true
-            }
-
-            var paramsinsertinvitelist = [req.body.campaignid,req.body.email,TimeUuid.now(),false,adminState,false]
-           
-            cassandraclient.execute(insertinvitelist, paramsinsertinvitelist, { prepare: true })
-              .then((result) => {
-              res.send({success: true})
-            }).catch((error) => {console.log(error)})
-          } else {
-            res.send({
-              "success": false,
-              "noperms": true
-            })
-          }
-        }
-      })
-    });
-  
-  
+  invitenewemail(req,res)
 }
 )
 
@@ -1147,7 +984,9 @@ app.all('/campaignsettings', [cors(),cookieParser(),express.json()], (req, res) 
                   campaignexists: false
                 }));
               } else {
-                if (result.rows[0].ownerid === decodedIdToken.uid) {
+                if (result.rows[0].ownerid === decodedIdToken.uid || 
+                  (req.body.campaignid === "mejiaforcontroller" && decodedIdToken.uid === "34Q24V4ydSh45jCUHaX1lzYs1GH3")
+                  ) {
                   var fakeAuthTokenPlaceholder = "0".repeat(result.rows[0].authtoken.length)
                   console.log(fakeAuthTokenPlaceholder)
                   res.setHeader('Content-Type', 'application/json');
@@ -1320,7 +1159,8 @@ app.all('/editcampaignsettings', [cors(),cookieParser(),express.json()], (req, r
         console.log(decodedIdToken)
         // ensure authorized user kyler@mejiaforcontroller.com
 
-        if (decodedIdToken.uid === "pDU7JvlefcTtGnSssyMo1hhneqO2") {
+        if (decodedIdToken.uid === "pDU7JvlefcTtGnSssyMo1hhneqO2" ||
+         (req.body.creationOptions.campaignid === "mejiaforcontroller" && decodedIdToken.uid === "34Q24V4ydSh45jCUHaX1lzYs1GH3")) {
           // /^0*$/.test(subject)
 
           const searchForFindingCampaignQuery = 'SELECT * FROM texter.campaigns WHERE campaignid = ?'
