@@ -2,7 +2,7 @@
   "name": "texting-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.ts",
+  "main": "dist/server.js",
   "scripts": {
     "prebuild": "tslint -c tslint.json -p tsconfig.json --fix",
     "build": "tsc",
