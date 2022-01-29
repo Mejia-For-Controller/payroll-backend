@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
-
+//import tracer from './tracer'; 
+import express from "express";
+import { createServer } from "http";
 const editJsonFile = require("edit-json-file");
 
 // If the file doesn't exist, the content will be an empty object by default.
@@ -24,9 +26,14 @@ var employees = file.get('employees').map((eachEmployee) => {
     return eachEmployee
 })
 
-const io = new Server({
-  // options
+const app = express(); 
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*'
+  }
 });
+
 
 io.on("connection", (socket) => {
     socket.on("employeereq",async (message) => {
