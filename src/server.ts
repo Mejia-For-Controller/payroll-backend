@@ -5,7 +5,7 @@ import { createServer } from "http";
 const editJsonFile = require("edit-json-file");
 
 // If the file doesn't exist, the content will be an empty object by default.
-let file = editJsonFile(`${__dirname}/employees8.json`);
+let file = editJsonFile(`${__dirname}/employees9.json`);
 
 function processStringToFloat(stringin) {
     if (stringin === "" || stringin === null || stringin === NaN) {
@@ -15,16 +15,9 @@ function processStringToFloat(stringin) {
     }
 }
 
-var employees = file.get('employees').map((eachEmployee) => {
-    //console.log(eachEmployee)
-    eachEmployee.base = processStringToFloat(eachEmployee.base)
-    eachEmployee.other = processStringToFloat(eachEmployee.other)
-    eachEmployee.overtime = processStringToFloat(eachEmployee.overtime)    
-    eachEmployee.healthcare = processStringToFloat(eachEmployee.healthcare)
-    eachEmployee.retirement = processStringToFloat(eachEmployee.retirement)
+var employees = file.get('employees')
 
-    return eachEmployee
-})
+console.log('json', employees)
 
 const app = express(); 
 const httpServer = createServer(app);
