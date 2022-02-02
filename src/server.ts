@@ -17,7 +17,7 @@ function processStringToFloat(stringin) {
 
 var employees = file.get('employees')
 
-console.log('json', employees)
+//console.log('json', employees)
 
 const app = express(); 
 const httpServer = createServer(app);
@@ -31,7 +31,7 @@ const io = new Server(httpServer, {
 io.on("connection", (socket) => {
     socket.on("employeereq",async (message) => {
     
-        
+        console.log(message)
 
     });
 });
