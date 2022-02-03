@@ -61,7 +61,9 @@ io.on("connection", (socket) => {
         }
 
         if (message.requestedFilters.lastName.trim().length > 0) {
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(message.requestedFilters.lastName.toLowerCase()))
+          var lastNameFilter = message.requestedFilters.lastName.toLowerCase();
+          console.log('lastNameFilter', lastNameFilter)
+          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(lastNameFilter))
         }
 
         if (message.requestedFilters.j.trim().length > 0) {
@@ -69,6 +71,8 @@ io.on("connection", (socket) => {
         }
 
       var totalCount =  employeeFilter.length;
+
+        console.log('totalCount', totalCount)
 
       // if the current loaded filters match the requested features, 
 
@@ -92,6 +96,9 @@ io.on("connection", (socket) => {
           employeePortion: croppedEmployees,
           meta: {
             totalFiltered: totalCount,
+            f: message.requestedFilters.firstName,
+            l: message.requestedFilters.lastName,
+            j: message.requestedFilters.j
           }
         })
 
