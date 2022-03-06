@@ -15,6 +15,34 @@ function processStringToFloat(stringin) {
     }
 }
 
+var deptLookup = {
+  'El Pueblo De Los Angeles Historical Monument Authority': "El Pueblo De Los Angeles",
+  "Los Angeles Department Of Convention And Tourism Development": "Convention and Tourism Development",
+  "Office Of Finance": "Finance",
+  "Information Technology Agency": "IT"
+}
+
+var requestdeptlookup = {
+  'Board of Public Works': "Public Works - Board Of Public Works",
+  "Contract Administration": "Public Works - Contract Administration",
+      "Engineering": "Public Works - Engineering",
+      "Sanitation": "Public Works - Sanitation",
+      "Street Lighting": "Public Works - Street Lighting",
+      "Street Services": "Public Works - Street Services",
+}
+
+var requestdeptlookupkeys = Object.keys(requestdeptlookup)
+
+function convertEachDeptToShort(longdept) {
+  var shortdept = longdept;
+
+  if (deptLookup[longdept]) {
+    shortdept = deptLookup[longdept];
+  } 
+
+  return shortdept;
+}
+
 var employees = file.get('employees').map((eachEmployee) => {
   return {
     //shorten key names for networking savings
@@ -23,7 +51,7 @@ var employees = file.get('employees').map((eachEmployee) => {
     b: eachEmployee.base,
     id: eachEmployee.id,
     //map d to department
-    d: eachEmployee.dept,
+    d: convertEachDeptToShort(eachEmployee.dept),
     // h means amount in healthcare costs
     h: eachEmployee.healthcare,
     // f means firstname
@@ -35,6 +63,8 @@ var employees = file.get('employees').map((eachEmployee) => {
     r: eachEmployee.retirement
   }
 })
+
+var lengthOfEmployeesAll = employees.length;
 
 //console.log('json', employees)
 
@@ -57,17 +87,46 @@ io.on("connection", (socket) => {
         var employeeFilter = employees;
 
         if (message.requestedFilters.firstName.trim().length > 0) {
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.toLowerCase()))
+          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.trim().toLowerCase()))
         }
 
         if (message.requestedFilters.lastName.trim().length > 0) {
-          var lastNameFilter = message.requestedFilters.lastName.toLowerCase();
+          var lastNameFilter = message.requestedFilters.lastName.trim().toLowerCase();
           console.log('lastNameFilter', lastNameFilter)
           employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(lastNameFilter))
         }
 
         if (message.requestedFilters.j.trim().length > 0) {
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
+          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.trim().toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
+        }
+
+
+
+        if (message.requestedFilters.enabledDept != "all" && message.requestedFilters.enabledDept != "none" && Array.isArray(message.requestedFilters.enabledDept)) {
+          console.log('enabled filter dept')
+
+          var mappedDepts = message.requestedFilters.enabledDept.map((eachDept) => {
+           
+            if (requestdeptlookupkeys.includes(eachDept)) {
+              var lookupReplacementDep = requestdeptlookup[eachDept];
+
+              if (lookupReplacementDep != undefined) {
+                return lookupReplacementDep;
+              } else {
+                return eachDept;
+              }
+              
+            } else {
+              return eachDept;
+            } 
+            
+
+            return eachDept;
+          });
+
+          employeeFilter = employeeFilter.filter((eachEmployee) => {
+              return mappedDepts.includes(eachEmployee.d);
+          })
         }
 
       var totalCount =  employeeFilter.length;
@@ -95,10 +154,16 @@ io.on("connection", (socket) => {
         socket.emit("result", {
           employeePortion: croppedEmployees,
           meta: {
+            startingpoint,
+            endpoint,
+            newseq: message.newSeq,
+            reqLoadedEmployeeRowsCount: message.loadedEmployeeRowsCount,
             totalFiltered: totalCount,
             f: message.requestedFilters.firstName,
             l: message.requestedFilters.lastName,
-            j: message.requestedFilters.j
+            j: message.requestedFilters.j,
+            d: message.requestedFilters.enabledDept,
+            entiresetcount: lengthOfEmployeesAll
           }
         })
 
