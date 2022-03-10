@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "prebuild": "tslint -c tslint.json -p tsconfig.json --fix",
-    "build": "cp src/employees9.json dist/ && tsc",
+    "build": "mkdir -p dist/ && cp src/employees9.json dist/ && tsc",
     "prestart": "npm run build",
     "start": "node .",
     "fullsync": "npm run build && npm run kylersync",
