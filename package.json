@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "prebuild": "tslint -c tslint.json -p tsconfig.json --fix",
-    "build": "mkdir -p dist/ && cp src/employees9.json dist/ && tsc",
+    "build": "mkdir -p dist/ && cp csvtojson/*.json dist/ && tsc",
     "prestart": "npm run build",
     "start": "node .",
     "fullsync": "npm run build && npm run kylersync",
@@ -22,6 +22,7 @@
     "connect-busboy": "^0.0.2",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
+    "csvtojson": "^2.0.10",
     "dd-trace": "^1.4.1",
     "dompurify": "^2.3.3",
     "edit-json-file": "^1.7.0",

@@ -43,28 +43,66 @@ function convertEachDeptToShort(longdept) {
   return shortdept;
 }
 
-var employees = file.get('employees').map((eachEmployee) => {
-  return {
-    //shorten key names for networking savings
-
-    //b means base
-    b: eachEmployee.base,
-    id: eachEmployee.id,
-    //map d to department
-    d: convertEachDeptToShort(eachEmployee.dept),
-    // h means amount in healthcare costs
-    h: eachEmployee.healthcare,
-    // f means firstname
-    f: eachEmployee.first,
-    j: eachEmployee.jobtitle,
-    l: eachEmployee.last,
-    ot: eachEmployee.other,
-    ov: eachEmployee.overtime,
-    r: eachEmployee.retirement
+var listOfYears = [
+  {
+    'year': "2018",
+    'file': 'employees2018.json'
+  },
+  {
+    'year': "2019",
+    'file': 'employees2019.json'
+  },
+  {
+    'year': "2020",
+    'file': 'employees2020.json'
+  },
+  {
+    'year': "2021",
+    'file': 'employees2021.json'
   }
+]
+
+var employeesByYear = {
+
+}
+
+var lengthOfEmployeesPerYear = {
+
+}
+
+listOfYears.forEach((eachYearObj) => {
+  var file = editJsonFile(`${__dirname}/${eachYearObj.file}`)
+
+  console.log(file)
+
+ var employeesListForYear = file.get('employees').map((eachEmployee) => {
+    return {
+      //shorten key names for networking savings
+  
+      //b means base
+      b: eachEmployee.base,
+      id: eachEmployee.id,
+      //map d to department
+      d: convertEachDeptToShort(eachEmployee.dept),
+      // h means amount in healthcare costs
+      h: eachEmployee.healthcare,
+      // f means firstname
+      f: eachEmployee.first,
+      j: eachEmployee.jobtitle,
+      l: eachEmployee.last,
+      ot: eachEmployee.other,
+      ov: eachEmployee.overtime,
+      r: eachEmployee.retirement
+    }
+  });
+
+  employeesByYear[eachYearObj.year] = employeesListForYear;
+
+  //store length of employees
+  lengthOfEmployeesPerYear[eachYearObj.year] = employeesListForYear.length;
 })
 
-var lengthOfEmployeesAll = employees.length;
+
 
 //console.log('json', employees)
 
@@ -84,7 +122,9 @@ io.on("connection", (socket) => {
 
      //   socket.emit("orderprocessing", {success: true})
 
-        var employeeFilter = employees;
+      var requestedYear = String(message.requestedYear)
+
+        var employeeFilter = employeesByYear[requestedYear];
 
         if (message.requestedFilters.firstName.trim().length > 0) {
           employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.trim().toLowerCase()))
@@ -163,7 +203,8 @@ io.on("connection", (socket) => {
             l: message.requestedFilters.lastName,
             j: message.requestedFilters.j,
             d: message.requestedFilters.enabledDept,
-            entiresetcount: lengthOfEmployeesAll
+            entiresetcount: lengthOfEmployeesPerYear[requestedYear],
+            year: message.requestedYear
           }
         })
 
