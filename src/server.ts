@@ -122,7 +122,7 @@ io.on("connection", (socket) => {
 
      //   socket.emit("orderprocessing", {success: true})
 
-      var requestedYear = String(message.requestedYear)
+      const requestedYear = message.requestedYear
 
         var employeeFilter = employeesByYear[requestedYear];
 
@@ -139,8 +139,6 @@ io.on("connection", (socket) => {
         if (message.requestedFilters.j.trim().length > 0) {
           employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.trim().toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
         }
-
-
 
         if (message.requestedFilters.enabledDept != "all" && message.requestedFilters.enabledDept != "none" && Array.isArray(message.requestedFilters.enabledDept)) {
           console.log('enabled filter dept')
@@ -180,7 +178,77 @@ io.on("connection", (socket) => {
       //if the current loaded filters are different, 
       //the starting point is 0
 
-      var startingpoint = 0
+      //*implement sort
+
+        /*
+        reuqestedSort: {
+          sortEnabled: true,
+          sortCol: 'b',
+          reverse: true
+        }
+
+        */
+
+      if (message.requestedSort.sortEnabled) {
+
+        var sortColumnExists = false;
+        var sortcol = message.requestedSort.sortCol;
+
+        if (message.requestedYear === "2021") {
+          sortColumnExists = ['b','ot','ov','l','f','d','j'].includes(message.requestedSort.sortCol)
+        } else {
+          sortColumnExists = ['b','ot','ov','l','f','d','j',"r",'h'].includes(message.requestedSort.sortCol)
+        }
+
+        var isNumberSort = ['b','ot','ov',"r",'h'].includes(message.requestedSort.sortCol)
+
+        if (sortColumnExists) {
+          if (isNumberSort) {
+
+            if (message.requestedSort.reverse) {
+              employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                return a[sortcol]-b[sortcol];
+              });
+            } else {
+              employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                return b[sortcol]-a[sortcol];
+              });
+            }
+
+           
+          } else {
+            if (message.requestedSort.reverse) {
+              employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                if (a[sortcol] == b[sortcol]) {
+                  return 0;
+                }
+
+                if (a[sortcol] > b[sortcol]) {
+                  return 1;
+                }
+                else {
+                  return -1;
+                }
+              });
+            } else {
+              employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                if (a[sortcol] == b[sortcol]) {
+                  return 0;
+                }
+
+                if (a[sortcol] < b[sortcol]) {
+                  return 1;
+                }
+                else {
+                  return -1;
+                }
+              });
+            }
+          }
+        }
+      }
+
+      var startingpoint = 0;
 
       if (message.newSeq === false) {
         startingpoint = message.loadedEmployeeRowsCount
@@ -189,7 +257,6 @@ io.on("connection", (socket) => {
       var  endpoint = startingpoint + 100
 
       var croppedEmployees = employeeFilter.slice(startingpoint,endpoint)
-
 
         socket.emit("result", {
           employeePortion: croppedEmployees,
@@ -204,7 +271,7 @@ io.on("connection", (socket) => {
             j: message.requestedFilters.j,
             d: message.requestedFilters.enabledDept,
             entiresetcount: lengthOfEmployeesPerYear[requestedYear],
-            year: message.requestedYear
+            year: requestedYear
           }
         })
 
