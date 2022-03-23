@@ -2,10 +2,8 @@ import { Server } from "socket.io";
 //import tracer from './tracer'; 
 import express from "express";
 import { createServer } from "http";
-const editJsonFile = require("edit-json-file");
-
-// If the file doesn't exist, the content will be an empty object by default.
-let file = editJsonFile(`${__dirname}/employees9.json`);
+//const editJsonFile = require("edit-json-file");
+import editJsonFile from 'edit-json-file'
 
 function processStringToFloat(stringin) {
     if (stringin === "" || stringin === null || stringin === NaN) {
@@ -189,6 +187,7 @@ io.on("connection", (socket) => {
 
         */
 
+     if (message.requestedSort) {
       if (message.requestedSort.sortEnabled) {
 
         var sortColumnExists = false;
@@ -247,6 +246,7 @@ io.on("connection", (socket) => {
           }
         }
       }
+     }
 
       var startingpoint = 0;
 

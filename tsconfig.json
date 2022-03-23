@@ -3,7 +3,7 @@
         "module": "commonjs",
         "esModuleInterop": true,
         "extendedDiagnostics": true,
-        "target": "es6",
+        "target": "esnext",
         "moduleResolution": "node",
         "sourceMap": true,
         "resolveJsonModule": true,

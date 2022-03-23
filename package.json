@@ -6,14 +6,7 @@
   "scripts": {
     "prebuild": "tslint -c tslint.json -p tsconfig.json --fix",
     "build": "mkdir -p dist/ && cp csvtojson/*.json dist/ && tsc",
-    "prestart": "npm run build",
-    "start": "node .",
-    "fullsync": "npm run build && npm run kylersync",
-    "test": "node tests",
-    "kylersync": " rsync -av --progress -e \"ssh -i /home/kyler/.ssh/id_rsa\" $(pwd)/dist ubuntu@api.text.mejiaforcontroller.com:/home/ubuntu/texting-backend",
-    "asbuild:debug": "asc assembly/index.ts --target debug",
-    "asbuild:release": "asc assembly/index.ts --target release",
-    "asbuild": "npm run asbuild:debug && npm run asbuild:release"
+    "start": "node ."
   },
   "author": "",
   "license": "ISC",
@@ -22,6 +15,7 @@
     "@types/rethinkdb": "^2.3.17",
     "axios": "^0.23.0",
     "cassandra-driver": "^4.6.3",
+    "commonjs": "^0.0.1",
     "connect-busboy": "^0.0.2",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
@@ -54,12 +48,5 @@
   },
   "devDependencies": {
     "assemblyscript": "^0.20.0"
-  },
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./build/release.js",
-      "types": "./build/release.d.ts"
-    }
   }
 }
