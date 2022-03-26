@@ -4,6 +4,8 @@ import express from "express";
 import { createServer } from "http";
 //const editJsonFile = require("edit-json-file");
 import editJsonFile from 'edit-json-file'
+import { sort, inPlaceSort, createNewSortInstance } from 'fast-sort';
+import add from 'add';
 
 function processStringToFloat(stringin) {
     if (stringin === "" || stringin === null || stringin === NaN) {
@@ -11,6 +13,12 @@ function processStringToFloat(stringin) {
     }  else {
         return parseFloat(stringin)
     }
+}
+
+function addArrayDeleteUndefined(arrayToAdd:Array<any>) {
+  var arrayCleaned = arrayToAdd.filter((eachItem) => eachItem != undefined);
+
+  return add(arrayCleaned);
 }
 
 var deptLookup = {
@@ -30,7 +38,6 @@ var requestdeptlookup = {
 }
 
 var requestdeptlookupkeys = Object.keys(requestdeptlookup)
-
 function convertEachDeptToShort(longdept) {
   var shortdept = longdept;
 
@@ -59,6 +66,7 @@ var listOfYears = [
     'file': 'employees2021.json'
   }
 ]
+
 
 var employeesByYear = {
 
@@ -205,18 +213,33 @@ io.on("connection", (socket) => {
           if (isNumberSort) {
 
             if (message.requestedSort.reverse) {
-              employeeFilter = employeeFilter.sort((a:any,b:any) => {
+            /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
                 return a[sortcol]-b[sortcol];
-              });
+              });*/
+                              
+                inPlaceSort(employeeFilter).desc(sortcol)
             } else {
+/*
               employeeFilter = employeeFilter.sort((a:any,b:any) => {
                 return b[sortcol]-a[sortcol];
               });
+*/
+
+                            
+              inPlaceSort(employeeFilter).asc(sortcol)
             }
 
            
           } else {
+
+                      // Or we can create new sort instance with language sensitive comparer.
+  // Recommended if used in multiple places
+  const naturalSort = createNewSortInstance({
+    comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+    inPlaceSorting: true,
+  });
             if (message.requestedSort.reverse) {
+              /*
               employeeFilter = employeeFilter.sort((a:any,b:any) => {
                 if (a[sortcol] == b[sortcol]) {
                   return 0;
@@ -229,7 +252,17 @@ io.on("connection", (socket) => {
                   return -1;
                 }
               });
+              */
+
+              if (sortcol === "t") {
+                //sum all amounts
+               // naturalSort.desc(e => e.b + e.ot + e.ov + e.r + e.h)
+               naturalSort.desc(e => addArrayDeleteUndefined([e.b,e.ot,e.ov,e.r,e.h]))
+              } else {
+                naturalSort.desc(sortcol)
+              }
             } else {
+            /*
               employeeFilter = employeeFilter.sort((a:any,b:any) => {
                 if (a[sortcol] == b[sortcol]) {
                   return 0;
@@ -242,6 +275,14 @@ io.on("connection", (socket) => {
                   return -1;
                 }
               });
+            */
+           
+              if (sortcol === "t") {
+                //sum all amounts
+                naturalSort.asc(e => addArrayDeleteUndefined([e.b,e.ot,e.ov,e.r,e.h]))
+              } else
+                naturalSort.asc(sortcol)
+              }
             }
           }
         }
