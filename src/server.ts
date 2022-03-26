@@ -287,7 +287,7 @@ io.on("connection", (socket) => {
           }
         }
       }
-     }
+     
 
       var startingpoint = 0;
 
