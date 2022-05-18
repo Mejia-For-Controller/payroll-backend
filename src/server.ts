@@ -8,14 +8,14 @@ import { sort, inPlaceSort, createNewSortInstance } from 'fast-sort';
 import add from 'add';
 
 function processStringToFloat(stringin) {
-    if (stringin === "" || stringin === null || stringin === NaN) {
-        return 0
-    }  else {
-        return parseFloat(stringin)
-    }
+  if (stringin === "" || stringin === null || stringin === NaN) {
+    return 0
+  } else {
+    return parseFloat(stringin)
+  }
 }
 
-function addArrayDeleteUndefined(arrayToAdd:Array<any>) {
+function addArrayDeleteUndefined(arrayToAdd: Array<any>) {
   var arrayCleaned = arrayToAdd.filter((eachItem) => eachItem != undefined);
 
   return add(arrayCleaned);
@@ -31,10 +31,10 @@ var deptLookup = {
 var requestdeptlookup = {
   'Board of Public Works': "Public Works - Board Of Public Works",
   "Contract Administration": "Public Works - Contract Administration",
-      "Engineering": "Public Works - Engineering",
-      "Sanitation": "Public Works - Sanitation",
-      "Street Lighting": "Public Works - Street Lighting",
-      "Street Services": "Public Works - Street Services",
+  "Engineering": "Public Works - Engineering",
+  "Sanitation": "Public Works - Sanitation",
+  "Street Lighting": "Public Works - Street Lighting",
+  "Street Services": "Public Works - Street Services",
 }
 
 var requestdeptlookupkeys = Object.keys(requestdeptlookup)
@@ -43,7 +43,7 @@ function convertEachDeptToShort(longdept) {
 
   if (deptLookup[longdept]) {
     shortdept = deptLookup[longdept];
-  } 
+  }
 
   return shortdept;
 }
@@ -81,10 +81,10 @@ listOfYears.forEach((eachYearObj) => {
 
   console.log(file)
 
- var employeesListForYear = file.get('employees').map((eachEmployee) => {
+  var employeesListForYear = file.get('employees').map((eachEmployee) => {
     return {
       //shorten key names for networking savings
-  
+
       //b means base
       b: eachEmployee.base,
       id: eachEmployee.id,
@@ -112,7 +112,7 @@ listOfYears.forEach((eachYearObj) => {
 
 //console.log('json', employees)
 
-const app = express(); 
+const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -122,122 +122,126 @@ const io = new Server(httpServer, {
 
 
 io.on("connection", (socket) => {
-    socket.on("employeereq",async (message) => {
-    
-        console.log(message)
+  socket.on("employeereq", async (message) => {
 
-     //   socket.emit("orderprocessing", {success: true})
+    console.log(message)
 
-      const requestedYear = message.requestedYear
+    //   socket.emit("orderprocessing", {success: true})
 
-        var employeeFilter = employeesByYear[requestedYear];
+    const requestedYear = message.requestedYear
 
-        if (message.requestedFilters.firstName.trim().length > 0) {
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.trim().toLowerCase()))
+    var employeeFilter = employeesByYear[requestedYear];
+
+    if (message.requestedFilters.firstName.trim().length > 0) {
+      employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.trim().toLowerCase()))
+    }
+
+    if (message.requestedFilters.lastName.trim().length > 0) {
+      var lastNameFilter = message.requestedFilters.lastName.trim().toLowerCase();
+      console.log('lastNameFilter', lastNameFilter)
+      employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(lastNameFilter))
+    }
+
+    if (message.requestedFilters.j.trim().length > 0) {
+      employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.trim().toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
+    }
+
+    if (message.requestedFilters.enabledDept != "all" && message.requestedFilters.enabledDept != "none" && Array.isArray(message.requestedFilters.enabledDept)) {
+      console.log('enabled filter dept')
+
+      var mappedDepts = message.requestedFilters.enabledDept.map((eachDept) => {
+
+
+
+        if (requestdeptlookupkeys.includes(eachDept)) {
+     
+          var lookupReplacementDep = requestdeptlookup[eachDept];
+
+          if (lookupReplacementDep != undefined) {
+            return lookupReplacementDep;
+          } else {
+            return ;
+          }
+
+        } else {
+          return eachDept;
         }
 
-        if (message.requestedFilters.lastName.trim().length > 0) {
-          var lastNameFilter = message.requestedFilters.lastName.trim().toLowerCase();
-          console.log('lastNameFilter', lastNameFilter)
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(lastNameFilter))
-        }
 
-        if (message.requestedFilters.j.trim().length > 0) {
-          employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.trim().toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
-        }
+        return eachDept;
+      });
 
-        if (message.requestedFilters.enabledDept != "all" && message.requestedFilters.enabledDept != "none" && Array.isArray(message.requestedFilters.enabledDept)) {
-          console.log('enabled filter dept')
+      employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-          var mappedDepts = message.requestedFilters.enabledDept.map((eachDept) => {
-           
-            if (requestdeptlookupkeys.includes(eachDept)) {
-              var lookupReplacementDep = requestdeptlookup[eachDept];
+        return mappedDepts.includes(eachEmployee.dreplace(/Council District (\d)(\d)?/g,"Council"));
+      })
+    }
 
-              if (lookupReplacementDep != undefined) {
-                return lookupReplacementDep;
-              } else {
-                return eachDept;
-              }
-              
-            } else {
-              return eachDept;
-            } 
-            
+    var totalCount = employeeFilter.length;
 
-            return eachDept;
-          });
+    console.log('totalCount', totalCount)
 
-          employeeFilter = employeeFilter.filter((eachEmployee) => {
-              return mappedDepts.includes(eachEmployee.d);
-          })
-        }
+    // if the current loaded filters match the requested features, 
 
-      var totalCount =  employeeFilter.length;
+    // starting point = message.loadedEmployeeRowsCount
 
-        console.log('totalCount', totalCount)
+    //if the current loaded filters are different, 
+    //the starting point is 0
 
-      // if the current loaded filters match the requested features, 
+    //*implement sort
 
-      // starting point = message.loadedEmployeeRowsCount
+    /*
+    reuqestedSort: {
+      sortEnabled: true,
+      sortCol: 'b',
+      reverse: true
+    }
 
-      //if the current loaded filters are different, 
-      //the starting point is 0
+    */
 
-      //*implement sort
-
-        /*
-        reuqestedSort: {
-          sortEnabled: true,
-          sortCol: 'b',
-          reverse: true
-        }
-
-        */
-
-     if (message.requestedSort) {
+    if (message.requestedSort) {
       if (message.requestedSort.sortEnabled) {
 
         var sortColumnExists = false;
         var sortcol = message.requestedSort.sortCol;
 
         if (message.requestedYear === "2021") {
-          sortColumnExists = ['b','ot','ov','l','f','d','j'].includes(message.requestedSort.sortCol)
+          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j'].includes(message.requestedSort.sortCol)
         } else {
-          sortColumnExists = ['b','ot','ov','l','f','d','j',"r",'h'].includes(message.requestedSort.sortCol)
+          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', "r", 'h'].includes(message.requestedSort.sortCol)
         }
 
-        var isNumberSort = ['b','ot','ov',"r",'h'].includes(message.requestedSort.sortCol)
+        var isNumberSort = ['b', 'ot', 'ov', "r", 'h'].includes(message.requestedSort.sortCol)
 
         if (sortColumnExists) {
           if (isNumberSort) {
 
             if (message.requestedSort.reverse) {
-            /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                return a[sortcol]-b[sortcol];
-              });*/
-                              
-                inPlaceSort(employeeFilter).desc(sortcol)
-            } else {
-/*
-              employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                return b[sortcol]-a[sortcol];
-              });
-*/
+              /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                  return a[sortcol]-b[sortcol];
+                });*/
 
-                            
+              inPlaceSort(employeeFilter).desc(sortcol)
+            } else {
+              /*
+                            employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                              return b[sortcol]-a[sortcol];
+                            });
+              */
+
+
               inPlaceSort(employeeFilter).asc(sortcol)
             }
 
-           
+
           } else {
 
-                      // Or we can create new sort instance with language sensitive comparer.
-  // Recommended if used in multiple places
-  const naturalSort = createNewSortInstance({
-    comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
-    inPlaceSorting: true,
-  });
+            // Or we can create new sort instance with language sensitive comparer.
+            // Recommended if used in multiple places
+            const naturalSort = createNewSortInstance({
+              comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+              inPlaceSorting: true,
+            });
             if (message.requestedSort.reverse) {
               /*
               employeeFilter = employeeFilter.sort((a:any,b:any) => {
@@ -256,74 +260,74 @@ io.on("connection", (socket) => {
 
               if (sortcol === "t") {
                 //sum all amounts
-               // naturalSort.desc(e => e.b + e.ot + e.ov + e.r + e.h)
-               naturalSort.desc(e => addArrayDeleteUndefined([e.b,e.ot,e.ov,e.r,e.h]))
+                // naturalSort.desc(e => e.b + e.ot + e.ov + e.r + e.h)
+                naturalSort.desc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
               } else {
                 naturalSort.desc(sortcol)
               }
             } else {
-            /*
-              employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                if (a[sortcol] == b[sortcol]) {
-                  return 0;
-                }
+              /*
+                employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                  if (a[sortcol] == b[sortcol]) {
+                    return 0;
+                  }
+  
+                  if (a[sortcol] < b[sortcol]) {
+                    return 1;
+                  }
+                  else {
+                    return -1;
+                  }
+                });
+              */
 
-                if (a[sortcol] < b[sortcol]) {
-                  return 1;
-                }
-                else {
-                  return -1;
-                }
-              });
-            */
-           
               if (sortcol === "t") {
                 //sum all amounts
-                naturalSort.asc(e => addArrayDeleteUndefined([e.b,e.ot,e.ov,e.r,e.h]))
+                naturalSort.asc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
               } else
                 naturalSort.asc(sortcol)
-              }
             }
           }
         }
       }
-     
+    }
 
-      var startingpoint = 0;
 
-      if (message.newSeq === false) {
-        startingpoint = message.loadedEmployeeRowsCount
+    var startingpoint = 0;
+
+    if (message.newSeq === false) {
+      startingpoint = message.loadedEmployeeRowsCount
+    }
+
+    var endpoint = startingpoint + 100
+
+    var croppedEmployees = employeeFilter.slice(startingpoint, endpoint)
+
+    socket.emit("result", {
+      employeePortion: croppedEmployees,
+      meta: {
+        startingpoint,
+        endpoint,
+        newseq: message.newSeq,
+        reqLoadedEmployeeRowsCount: message.loadedEmployeeRowsCount,
+        totalFiltered: totalCount,
+        f: message.requestedFilters.firstName,
+        l: message.requestedFilters.lastName,
+        j: message.requestedFilters.j,
+        d: message.requestedFilters.enabledDept,
+        entiresetcount: lengthOfEmployeesPerYear[requestedYear],
+        year: requestedYear
       }
+    })
 
-      var  endpoint = startingpoint + 100
-
-      var croppedEmployees = employeeFilter.slice(startingpoint,endpoint)
-
-        socket.emit("result", {
-          employeePortion: croppedEmployees,
-          meta: {
-            startingpoint,
-            endpoint,
-            newseq: message.newSeq,
-            reqLoadedEmployeeRowsCount: message.loadedEmployeeRowsCount,
-            totalFiltered: totalCount,
-            f: message.requestedFilters.firstName,
-            l: message.requestedFilters.lastName,
-            j: message.requestedFilters.j,
-            d: message.requestedFilters.enabledDept,
-            entiresetcount: lengthOfEmployeesPerYear[requestedYear],
-            year: requestedYear
-          }
-        })
-
-    });
+  });
 });
 
 io.engine.on("connection_error", (err) => {
-    console.log(err.req);      // the request object
-    console.log(err.code);     // the error code, for example 1
-    console.log(err.message);  // the error message, for example "Session ID unknown"
-    console.log(err.context);  // some additional error context
-  });
+  console.log(err.req);      // the request object
+  console.log(err.code);     // the error code, for example 1
+  console.log(err.message);  // the error message, for example "Session ID unknown"
+  console.log(err.context);  // some additional error context
+});
 
 io.listen(4927);
