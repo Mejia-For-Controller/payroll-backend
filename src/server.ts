@@ -173,7 +173,7 @@ io.on("connection", (socket) => {
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-        return mappedDepts.includes(eachEmployee.dreplace(/Council District (\d)(\d)?/g,"Council"));
+        return mappedDepts.includes(eachEmployee.replace(/Council District (\d)(\d)?/g,"Council"));
       })
     }
 
