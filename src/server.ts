@@ -132,12 +132,12 @@ io.on("connection", (socket) => {
 
     var employeeFilter = employeesByYear[requestedYear];
 
-    if (message.requestedFilters.firstName.trim().length > 0) {
-      employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.firstName.trim().toLowerCase()))
+    if (message.requestedFilters.f.trim().length > 0) {
+      employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.f.toLowerCase().includes(message.requestedFilters.f.trim().toLowerCase()))
     }
 
-    if (message.requestedFilters.lastName.trim().length > 0) {
-      var lastNameFilter = message.requestedFilters.lastName.trim().toLowerCase();
+    if (message.requestedFilters.l.trim().length > 0) {
+      var lastNameFilter = message.requestedFilters.l.trim().toLowerCase();
       console.log('lastNameFilter', lastNameFilter)
       employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.l.toLowerCase().includes(lastNameFilter))
     }
@@ -146,10 +146,10 @@ io.on("connection", (socket) => {
       employeeFilter = employeeFilter.filter((eachEmployee) => eachEmployee.j.trim().toLowerCase().includes(message.requestedFilters.j.toLowerCase()))
     }
 
-    if (message.requestedFilters.enabledDept != "all" && message.requestedFilters.enabledDept != "none" && Array.isArray(message.requestedFilters.enabledDept)) {
+    if (message.requestedFilters.d != "all" && message.requestedFilters.d != "none" && Array.isArray(message.requestedFilters.d)) {
       console.log('enabled filter dept')
 
-      var mappedDepts = message.requestedFilters.enabledDept.map((eachDept) => {
+      var mappedDepts = message.requestedFilters.d.map((eachDept) => {
 
 
 
@@ -160,21 +160,19 @@ io.on("connection", (socket) => {
           if (lookupReplacementDep != undefined) {
             return lookupReplacementDep;
           } else {
-            return ;
+            return eachDept;
           }
 
         } else {
           return eachDept;
         }
-
-
-        return eachDept;
       });
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
         return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g,"Council"));
       })
+
     }
 
     var totalCount = employeeFilter.length;
@@ -231,7 +229,7 @@ io.on("connection", (socket) => {
 
 
               inPlaceSort(employeeFilter).asc(sortcol)
-            }f
+            }
 
 
           } else {
@@ -259,6 +257,7 @@ io.on("connection", (socket) => {
               */
 
               if (sortcol === "t") {
+
                 //sum all amounts
                 // naturalSort.desc(e => e.b + e.ot + e.ov + e.r + e.h)
                 naturalSort.desc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
@@ -303,6 +302,8 @@ io.on("connection", (socket) => {
 
     var croppedEmployees = employeeFilter.slice(startingpoint, endpoint)
 
+    console.log('send back')
+
     socket.emit("result", {
       employeePortion: croppedEmployees,
       meta: {
@@ -311,10 +312,10 @@ io.on("connection", (socket) => {
         newseq: message.newSeq,
         reqLoadedEmployeeRowsCount: message.loadedEmployeeRowsCount,
         totalFiltered: totalCount,
-        f: message.requestedFilters.firstName,
-        l: message.requestedFilters.lastName,
+        f: message.requestedFilters.f,
+        l: message.requestedFilters.l,
         j: message.requestedFilters.j,
-        d: message.requestedFilters.enabledDept,
+        d: message.requestedFilters.d,
         entiresetcount: lengthOfEmployeesPerYear[requestedYear],
         year: requestedYear
       }
