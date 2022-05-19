@@ -243,7 +243,7 @@ io.on("connection", (socket) => {
               comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
               inPlaceSorting: true,
             });
-            if (message.requestedSort.reverse) {
+            if (message.requestedSort.reverse === 'reverse') {
               /*
               employeeFilter = employeeFilter.sort((a:any,b:any) => {
                 if (a[sortcol] == b[sortcol]) {
@@ -320,6 +320,8 @@ io.on("connection", (socket) => {
         l: message.requestedFilters.l,
         j: message.requestedFilters.j,
         d: message.requestedFilters.d,
+        sortcol: message.requestedSort.sortCol,
+        sortreverse: message.requestedSort.reverse,
         entiresetcount: lengthOfEmployeesPerYear[requestedYear],
         year: requestedYear
       }
