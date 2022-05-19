@@ -217,7 +217,7 @@ io.on("connection", (socket) => {
 
           if (isNumberSort) {
 
-            if (message.requestedSort.reverse) {
+            if (message.requestedSort.reverse === 'reverse') {
               /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
                   return a[sortcol]-b[sortcol];
                 });*/
