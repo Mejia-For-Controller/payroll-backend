@@ -223,13 +223,13 @@ io.on("connection", (socket) => {
               });*/
 
             if (sortcol === 't') {
-              inPlaceSort(employeeFilter).desc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
+              inPlaceSort(employeeFilter).desc((e:any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
             } else {
               inPlaceSort(employeeFilter).desc(sortcol)
             }
           } else {
             if (sortcol === 't') {
-              inPlaceSort(employeeFilter).asc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
+              inPlaceSort(employeeFilter).asc((e:any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
             } else {
               inPlaceSort(employeeFilter).asc(sortcol)
             }
