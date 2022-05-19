@@ -154,7 +154,7 @@ io.on("connection", (socket) => {
 
 
         if (requestdeptlookupkeys.includes(eachDept)) {
-     
+
           var lookupReplacementDep = requestdeptlookup[eachDept];
 
           if (lookupReplacementDep != undefined) {
@@ -170,7 +170,7 @@ io.on("connection", (socket) => {
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g,"Council"));
+        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council"));
       })
 
     }
@@ -209,89 +209,49 @@ io.on("connection", (socket) => {
           sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', "r", 'h'].includes(message.requestedSort.sortCol)
         }
 
-        var isNumberSort = ['b', 'ot', 'ov', "r", 'h'].includes(message.requestedSort.sortCol)
+        var isNumberSort = ['b', 'ot', 'ov', "r", 'h', 't'].includes(message.requestedSort.sortCol)
 
         if (!sortColumnExists) {
           sortcol = 'b'
         }
 
-          if (isNumberSort) {
+        if (isNumberSort) {
 
-            if (message.requestedSort.reverse === 'reverse') {
-              /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                  return a[sortcol]-b[sortcol];
-                });*/
+          if (message.requestedSort.reverse === 'reverse') {
+            /*  employeeFilter = employeeFilter.sort((a:any,b:any) => {
+                return a[sortcol]-b[sortcol];
+              });*/
 
-              inPlaceSort(employeeFilter).desc(sortcol)
+            if (sortcol === 't') {
+              inPlaceSort(employeeFilter).desc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
             } else {
-              /*
-                            employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                              return b[sortcol]-a[sortcol];
-                            });
-              */
-
-
+              inPlaceSort(employeeFilter).desc(sortcol)
+            }
+          } else {
+            if (sortcol === 't') {
+              inPlaceSort(employeeFilter).asc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
+            } else {
               inPlaceSort(employeeFilter).asc(sortcol)
             }
+          }
 
+        } else {
+
+          // Or we can create new sort instance with language sensitive comparer.
+          // Recommended if used in multiple places
+          const naturalSort = createNewSortInstance({
+            comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+            inPlaceSorting: true,
+          });
+          if (message.requestedSort.reverse === 'reverse') {
+            naturalSort(employeeFilter).desc(sortcol)
 
           } else {
+            naturalSort(employeeFilter).asc(sortcol)
 
-            // Or we can create new sort instance with language sensitive comparer.
-            // Recommended if used in multiple places
-            const naturalSort = createNewSortInstance({
-              comparer: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
-              inPlaceSorting: true,
-            });
-            if (message.requestedSort.reverse === 'reverse') {
-              /*
-              employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                if (a[sortcol] == b[sortcol]) {
-                  return 0;
-                }
-
-                if (a[sortcol] > b[sortcol]) {
-                  return 1;
-                }
-                else {
-                  return -1;
-                }
-              });
-              */
-
-              if (sortcol === "t") {
-
-                //sum all amounts
-                // naturalSort.desc(e => e.b + e.ot + e.ov + e.r + e.h)
-                naturalSort.desc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
-              } else {
-                naturalSort.desc(sortcol)
-              }
-            } else {
-              /*
-                employeeFilter = employeeFilter.sort((a:any,b:any) => {
-                  if (a[sortcol] == b[sortcol]) {
-                    return 0;
-                  }
-  
-                  if (a[sortcol] < b[sortcol]) {
-                    return 1;
-                  }
-                  else {
-                    return -1;
-                  }
-                });
-              */
-
-              if (sortcol === "t") {
-                //sum all amounts
-                naturalSort.asc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
-              } else {
-                naturalSort.asc(sortcol)
-              }
-            }
           }
-        
+        }
+
       }
     }
 
