@@ -211,7 +211,10 @@ io.on("connection", (socket) => {
 
         var isNumberSort = ['b', 'ot', 'ov', "r", 'h'].includes(message.requestedSort.sortCol)
 
-        if (sortColumnExists) {
+        if (!sortColumnExists) {
+          sortcol = 'b'
+        }
+
           if (isNumberSort) {
 
             if (message.requestedSort.reverse) {
@@ -283,11 +286,12 @@ io.on("connection", (socket) => {
               if (sortcol === "t") {
                 //sum all amounts
                 naturalSort.asc(e => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
-              } else
+              } else {
                 naturalSort.asc(sortcol)
+              }
             }
           }
-        }
+        
       }
     }
 
