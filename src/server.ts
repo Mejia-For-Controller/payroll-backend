@@ -34,7 +34,7 @@ var requestdeptlookup = {
   "Engineering": "Public Works - Engineering",
   "Sanitation": "Public Works - Sanitation",
   "Street Lighting": "Public Works - Street Lighting",
-  "Street Services": "Public Works - Street Services",
+  "Street Services": "Public Works - Street Services"
 }
 
 var requestdeptlookupkeys = Object.keys(requestdeptlookup)
@@ -170,7 +170,9 @@ io.on("connection", (socket) => {
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council"));
+        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
+        .replace(/PW - /g, "Public Works - ")
+        );
       })
 
     }
