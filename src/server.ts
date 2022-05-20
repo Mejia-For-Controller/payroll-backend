@@ -206,9 +206,9 @@ io.on("connection", (socket) => {
         var sortcol = message.requestedSort.sortCol;
 
         if (message.requestedYear === "2021") {
-          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j'].includes(message.requestedSort.sortCol)
+          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', 't'].includes(message.requestedSort.sortCol)
         } else {
-          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', "r", 'h'].includes(message.requestedSort.sortCol)
+          sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', "r", 'h', 't'].includes(message.requestedSort.sortCol)
         }
 
         var isNumberSort = ['b', 'ot', 'ov', "r", 'h', 't'].includes(message.requestedSort.sortCol)
