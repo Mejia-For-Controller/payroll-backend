@@ -7,6 +7,9 @@ import editJsonFile from 'edit-json-file'
 import { sort, inPlaceSort, createNewSortInstance } from 'fast-sort';
 import add from 'add';
 
+var StatsD = require('hot-shots');
+var dogstatsd = new StatsD();
+
 function processStringToFloat(stringin) {
   if (stringin === "" || stringin === null || stringin === NaN) {
     return 0
@@ -122,8 +125,10 @@ const io = new Server(httpServer, {
 
 
 io.on("connection", (socket) => {
-  socket.on("employeereq", async (message) => {
+  dogstatsd.increment('payroll.newconnection');
 
+  socket.on("employeereq", async (message) => {
+    dogstatsd.increment('payroll.employeereq');
     console.log(message)
 
     //   socket.emit("orderprocessing", {success: true})
