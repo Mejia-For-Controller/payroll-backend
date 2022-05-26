@@ -7,6 +7,9 @@ import editJsonFile from 'edit-json-file'
 import { sort, inPlaceSort, createNewSortInstance } from 'fast-sort';
 import add from 'add';
 
+import { logger } from "./logger";
+
+
 var StatsD = require('hot-shots');
 var dogstatsd = new StatsD();
 
@@ -130,6 +133,11 @@ io.on("connection", (socket) => {
   socket.on("employeereq", async (message) => {
     dogstatsd.increment('payroll.employeereq');
     console.log(message)
+    try {
+      logger.info({req: message,type: 'employeereq', ipaddress: message.remoteAddress})}
+      catch (err) {
+        console.err(err)
+      }
 
     //   socket.emit("orderprocessing", {success: true})
 

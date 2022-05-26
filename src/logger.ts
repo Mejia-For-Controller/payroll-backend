@@ -3,7 +3,7 @@ const { config } = require('./../config.json');
 
 const httpTransportOptions = {
   host: 'http-intake.logs.datadoghq.com',
-  path: `/api/v2/logs?dd-api-key=${config.datadog}&ddsource=nodejs&service=texting-backend`,
+  path: `/api/v2/logs?dd-api-key=${config.datadog}&ddsource=nodejs&service=payroll-backend`,
   ssl: true
 };
 
