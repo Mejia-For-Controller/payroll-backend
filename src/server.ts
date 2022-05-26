@@ -136,7 +136,7 @@ io.on("connection", (socket) => {
     try {
       logger.info({req: message,type: 'employeereq', ipaddress: message.remoteAddress})}
       catch (err) {
-        console.err(err)
+        console.error(err)
       }
 
     //   socket.emit("orderprocessing", {success: true})
