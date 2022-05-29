@@ -30,8 +30,7 @@ function addArrayDeleteUndefined(arrayToAdd: Array<any>) {
 var deptLookup = {
   'El Pueblo De Los Angeles Historical Monument Authority': "El Pueblo De Los Angeles",
   "Los Angeles Department Of Convention And Tourism Development": "Convention and Tourism Development",
-  "Office Of Finance": "Finance",
-  "Information Technology Agency": "IT"
+  "Office Of Finance": "Finance"
 }
 
 var requestdeptlookup = {
