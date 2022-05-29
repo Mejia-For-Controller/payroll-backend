@@ -134,10 +134,11 @@ io.on("connection", (socket) => {
     dogstatsd.increment('payroll.employeereq');
     console.log(message)
     try {
-      logger.info({req: message,type: 'employeereq', ipaddress: message.remoteAddress})}
-      catch (err) {
-        console.error(err)
-      }
+      logger.info({ req: message, type: 'employeereq', ipaddress: message.remoteAddress })
+    }
+    catch (err) {
+      console.error(err)
+    }
 
     //   socket.emit("orderprocessing", {success: true})
 
@@ -184,18 +185,20 @@ io.on("connection", (socket) => {
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
         return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
-        .replace(/Public Works - /g, "PW - ")
+          .replace(/Public Works - /g, "PW - ")
         );
       })
 
       const employeeFilterDeptTest = employeeFilter.filter((eachEmployee) => {
 
         return !(mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
-        .replace(/Public Works - /g, "PW - ")
+          .replace(/Public Works - /g, "PW - ")
         ));
       })
 
-      console.log(employeeFilterDeptTest)
+      logger.info(employeeFilterDeptTest,{type: 'antidept'})
+
+      //console.log(employeeFilterDeptTest)
 
     }
 
@@ -247,13 +250,13 @@ io.on("connection", (socket) => {
               });*/
 
             if (sortcol === 't') {
-              inPlaceSort(employeeFilter).desc((e:any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
+              inPlaceSort(employeeFilter).desc((e: any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
             } else {
               inPlaceSort(employeeFilter).desc(sortcol)
             }
           } else {
             if (sortcol === 't') {
-              inPlaceSort(employeeFilter).asc((e:any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
+              inPlaceSort(employeeFilter).asc((e: any) => addArrayDeleteUndefined([e.b, e.ot, e.ov, e.r, e.h]))
             } else {
               inPlaceSort(employeeFilter).asc(sortcol)
             }
