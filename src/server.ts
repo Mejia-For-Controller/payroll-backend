@@ -188,6 +188,15 @@ io.on("connection", (socket) => {
         );
       })
 
+      const employeeFilterDeptTest = employeeFilter.filter((eachEmployee) => {
+
+        return !(mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
+        .replace(/Public Works - /g, "PW - ")
+        ));
+      })
+
+      console.log(employeeFilterDeptTest)
+
     }
 
     var totalCount = employeeFilter.length;
