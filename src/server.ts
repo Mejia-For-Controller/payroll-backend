@@ -187,16 +187,6 @@ io.on("connection", (socket) => {
           .replace(/Public Works - /g, "PW - ")
         );
       })
-
-      const employeeFilterDeptTest = employeeFilter.filter((eachEmployee) => {
-
-        return !(mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
-          .replace(/Public Works - /g, "PW - ")
-        ));
-      })
-
-      logger.info(employeeFilterDeptTest,{type: 'antidept'})
-
       //console.log(employeeFilterDeptTest)
 
     }
