@@ -127,13 +127,15 @@ const io = new Server(httpServer, {
 
 
 io.on("connection", (socket) => {
+  var address = socket.handshake.address;
+
   dogstatsd.increment('payroll.newconnection');
 
   socket.on("employeereq", async (message) => {
     dogstatsd.increment('payroll.employeereq');
     console.log(message)
     try {
-      logger.info({ req: message, type: 'employeereq', ipaddress: message.remoteAddress })
+      logger.info({ req: message, type: 'employeereq', ipaddress: address.address })
     }
     catch (err) {
       console.error(err)
