@@ -72,13 +72,29 @@ var listOfYears = [
   }
 ]
 
-
 var employeesByYear = {
 
 }
 
 var lengthOfEmployeesPerYear = {
 
+}
+
+function formatNumber(input) {
+  if (input === "" || input === null || input === undefined) {
+    return 0;
+  }
+  if (typeof(input) === 'number') {
+    return input;
+
+  } else {
+    if (typeof(input) === 'string') {
+      return parseFloat(input);
+  
+    } else {
+      return 0;
+    }
+  }
 }
 
 listOfYears.forEach((eachYearObj) => {
@@ -91,19 +107,19 @@ listOfYears.forEach((eachYearObj) => {
       //shorten key names for networking savings
 
       //b means base
-      b: eachEmployee.base,
+      b: formatNumber(eachEmployee.base),
       id: eachEmployee.id,
       //map d to department
       d: convertEachDeptToShort(eachEmployee.dept),
       // h means amount in healthcare costs
-      h: eachEmployee.healthcare,
+      h: formatNumber(eachEmployee.healthcare),
       // f means firstname
       f: eachEmployee.first,
       j: eachEmployee.jobtitle,
       l: eachEmployee.last,
-      ot: eachEmployee.other,
-      ov: eachEmployee.overtime,
-      r: eachEmployee.retirement
+      ot: formatNumber(eachEmployee.other),
+      ov: formatNumber(eachEmployee.overtime),
+      r: formatNumber(eachEmployee.retirement),
     }
   });
 
