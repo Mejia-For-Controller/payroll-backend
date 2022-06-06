@@ -166,7 +166,7 @@ io.on("connection", (socket) => {
 
       var mappedDepts = message.requestedFilters.d.map((eachDept) => {
 
-
+        eachDept = eachDept.toLowerCase()
 
         if (requestdeptlookupkeys.includes(eachDept)) {
 
@@ -185,8 +185,8 @@ io.on("connection", (socket) => {
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council").replace(/Los Angeles City Tourism Department/g,"Convention and Tourism Development")
-          .replace(/Public Works - /g, "PW - ")
+        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/gi, "Council").replace(/Los Angeles City Tourism Department/gi,"Convention and Tourism Development")
+          .replace(/Public Works - /gi, "PW - ").toLowerCase()
         );
       })
       //console.log(employeeFilterDeptTest)
