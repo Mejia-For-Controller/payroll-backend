@@ -185,7 +185,7 @@ io.on("connection", (socket) => {
 
       employeeFilter = employeeFilter.filter((eachEmployee) => {
 
-        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council")
+        return mappedDepts.includes(eachEmployee.d.replace(/Council District (\d)(\d)?/g, "Council").replace(/Los Angeles City Tourism Department/g,"City Tourism Department")
           .replace(/Public Works - /g, "PW - ")
         );
       })
