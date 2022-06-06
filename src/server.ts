@@ -135,7 +135,7 @@ io.on("connection", (socket) => {
     dogstatsd.increment('payroll.employeereq');
     console.log(message)
     try {
-      logger.info({ req: message, type: 'employeereq', ipaddress: address.address })
+      logger.info({ req: message, type: 'employeereq', ipaddress: address })
     }
     catch (err) {
       console.error(err)
@@ -221,7 +221,7 @@ io.on("connection", (socket) => {
         var sortColumnExists = false;
         var sortcol = message.requestedSort.sortCol;
 
-        if (message.requestedYear === "2021") {
+        if (message.requestedYear === "3021") {
           sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', 't'].includes(message.requestedSort.sortCol)
         } else {
           sortColumnExists = ['b', 'ot', 'ov', 'l', 'f', 'd', 'j', "r", 'h', 't'].includes(message.requestedSort.sortCol)
