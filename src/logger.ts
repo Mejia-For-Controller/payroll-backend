@@ -1,5 +1,5 @@
 const { createLogger, format, transports } = require('winston');
-const { config } = require('./../config.json');
+const config  = require('./../config.json');
 
   let httpTransportOptions = {
   host: 'http-intake.logs.datadoghq.com',
