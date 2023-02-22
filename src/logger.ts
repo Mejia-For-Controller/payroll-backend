@@ -1,6 +1,8 @@
 const { createLogger, format, transports } = require('winston');
 const { config } = require('./../config.json');
 
+  if (config?.datadog) {
+  
 const httpTransportOptions = {
   host: 'http-intake.logs.datadoghq.com',
   path: `/api/v2/logs?dd-api-key=${config.datadog}&ddsource=nodejs&service=payroll-backend`,
@@ -38,3 +40,4 @@ export const logger = createLogger({
       new transports.Http(httpTransportOptions),
     ]
   });
+  }
