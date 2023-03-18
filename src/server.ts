@@ -69,6 +69,10 @@ var listOfYears = [
   {
     'year': "2021",
     'file': 'employees2021.json'
+  },
+  {
+    'year': "2022",
+    'file': 'employees2022.json'
   }
 ]
 
@@ -101,6 +105,10 @@ listOfYears.forEach((eachYearObj) => {
   var file = editJsonFile(`${__dirname}/${eachYearObj.file}`)
 
   console.log(file)
+  
+  if (file.get('employees') == undefined) {
+    console.log('employees is undefined', eachYearObj.file)
+  }
 
   var employeesListForYear = file.get('employees').map((eachEmployee) => {
     return {

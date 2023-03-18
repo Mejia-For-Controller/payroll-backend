@@ -1,4 +1,4 @@
-const csvFilePath = './employeesv8.csv'
+
 
 const editJsonFile = require("edit-json-file");
 
@@ -8,10 +8,13 @@ let oneeightemployees = editJsonFile(`${__dirname}/employees2018.json`);
 let onenineemployees = editJsonFile(`${__dirname}/employees2019.json`);
 let twozeroemployees = editJsonFile(`${__dirname}/employees2020.json`);
 let twooneemployees = editJsonFile(`${__dirname}/employees2021.json`);
+let twotwoemployees = editJsonFile(`${__dirname}/employees2022.json`);
 
 const letterCase = require('capitalize-decapitalize')
 
 const capitalizeString = require('capitalize-string')
+
+const {titleCase} = require('title-case')
 
 function replaceJob(stringjob) {
     if (stringjob) {
@@ -28,11 +31,13 @@ function replaceJob(stringjob) {
 }
 
 var pathsToProcess = [
-    /*
+    
     ['./2018.csv',oneeightemployees],
     ['./2019.csv',onenineemployees],
-    ['./2020.csv',twozeroemployees],*/
-    ['./payroll-2022-new.csv',twooneemployees],
+    ['./2020.csv',twozeroemployees],
+    ['./2021.csv',twooneemployees],
+    //['./payroll-2022-new.csv',twooneemployees],
+    ['./employees2022.csv',twotwoemployees],
 ]
 
 const csv = require('csvtojson');
@@ -48,27 +53,25 @@ pathsToProcess.forEach((eachYear) => {
     )
         .fromFile(eachYear[0])
         .then((jsonObj) => {
-            console.log(jsonObj);
-            var correctedJson = jsonObj.map((eachEmployee) => {
-                eachEmployee['first'] = eachEmployee['first'] || eachEmployee['First']
-                eachEmployee['last'] = eachEmployee['last'] || eachEmployee['Last']
-                eachEmployee['jobtitle'] = replaceJob(eachEmployee['jobtitle'] || eachEmployee['Job'])
-                eachEmployee['dept'] = eachEmployee['dept'] || eachEmployee['Dept']
-                eachEmployee['base'] = parseFloat(eachEmployee['base'] || eachEmployee['Base Pay'])
-                eachEmployee['overtime'] = parseFloat(eachEmployee['overtime'] || eachEmployee['Overtime'])
-                eachEmployee['other'] = parseFloat(eachEmployee['other'] || parseFloat(eachEmployee['Other']))
-                if (eachEmployee['healthcare'] || eachEmployee['Health']) {
-                    eachEmployee['healthcare'] = parseFloat(eachEmployee['healthcare'] || eachEmployee['Health'])
+           // console.log(jsonObj);
+            const correctedJson = jsonObj.map((eachEmployeeInit) => {
+
+                const eachEmployee = {}
+
+                eachEmployee['first'] = ( eachEmployeeInit['first'] || eachEmployeeInit['First']) ? titleCase(eachEmployeeInit['first'].toLowerCase() || eachEmployeeInit['First'].toLowerCase()) : ""
+                eachEmployee['last'] = ( eachEmployeeInit['last'] || eachEmployeeInit['Last']) ? titleCase(eachEmployeeInit['last'].toLowerCase() || eachEmployeeInit['Last'].toLowerCase()) : ""
+                eachEmployee['jobtitle'] = replaceJob(titleCase((eachEmployeeInit['jobtitle'] || eachEmployeeInit['Job']).toLowerCase()))
+                eachEmployee['dept'] = titleCase(eachEmployeeInit['dept'].toLowerCase() || eachEmployeeInit['Dept'].toLowerCase())
+                eachEmployee['base'] = parseFloat(eachEmployeeInit['base'] || eachEmployeeInit['Base Pay'])
+                eachEmployee['overtime'] = parseFloat(eachEmployeeInit['overtime'] || eachEmployeeInit['Overtime'])
+                eachEmployee['other'] = parseFloat(eachEmployeeInit['other'] || parseFloat(eachEmployeeInit['Other']))
+                if (eachEmployeeInit['healthcare'] || eachEmployeeInit['Health']) {
+                    eachEmployee['healthcare'] = parseFloat(eachEmployeeInit['healthcare'] || eachEmployeeInit['Health'])
                 }
-                if (eachEmployee['retirement'] || eachEmployee['Retirement']) {
+                if (eachEmployeeInit['retirement'] || eachEmployeeInit['Retirement']) {
                     
-                eachEmployee['retirement'] = parseFloat(eachEmployee['Retirement'] || eachEmployee['retirement'])
+                eachEmployee['retirement'] = parseFloat(eachEmployeeInit['Retirement'] || eachEmployeeInit['retirement'])
                 }
-    
-                delete eachEmployee['First']
-                delete eachEmployee['Last']
-                delete eachEmployee['Job']
-                delete eachEmployee['Health']
 
                 return eachEmployee
             })
